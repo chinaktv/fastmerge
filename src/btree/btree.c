@@ -60,7 +60,6 @@ static void bintree_insert(struct btree * p_btree, off_t data)
 		int cmp = p_btree->compare(data_ptr, pptr_data_ptr);
 		store_release(p_btree->oStore, pptr->data);
 		if(cmp == GT) {
-
 			next_read = pptr->right;
 			if(next_read == ISNULL) {
 				pptr->right = new_idx;
@@ -112,11 +111,8 @@ void btree_insert(struct btree * tree, off_t data)
 
 		tree->root = node_idx;
 
-	} else {
-
+	} else
 		bintree_insert( tree, data );
-
-	}
 
 	tree->entries_num++;
 }
@@ -434,7 +430,7 @@ int bintree_find (const struct btree * tree, const struct btree_node * node, off
 	store_release(tree->oStore, node->data);
 
 	if(cmp == EQ) {
-		printf ("Item found. (%ld)\n" , (long int) *(off_t*)find_data);
+//		printf ("Item found. (%ld)\n" , (long int) *(off_t*)find_data);
 		ret = 1;
 	} else if (cmp == LT) {
 		if(node->left == ISNULL) {

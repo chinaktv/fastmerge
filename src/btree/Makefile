@@ -8,7 +8,7 @@ RANLIB = $(CROSS_COMPILE)-ranlib
 INCS +=-Wundef -Wall -pipe -O0 -g
 CFLAGS += $(INCS) $(CPPFLAGS) 
 
-SRC += btree.c memstore.c bTreeTest.c
+SRC += btree.c memstore.c user_info.c
 
 OBJS=$(addprefix objects/, $(addsuffix .o, $(basename $(notdir $(SRC)))))
 
