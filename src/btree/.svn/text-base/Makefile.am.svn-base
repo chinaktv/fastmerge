@@ -1,5 +1,0 @@
-bin_PROGRAMS=bTreeTest
-lib_LIBRARIES=libbtree.a
-bTreeTest_SOURCES=bTreeTest.c bTree.c
-bTreeTest_LDADD=../bulk_storage/libbulkstorage.a ../query_handler/libqueryhandler.a
-libbtree_a_SOURCES=bTree.c
