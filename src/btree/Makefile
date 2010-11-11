@@ -16,11 +16,11 @@ OBJS=$(addprefix objects/, $(addsuffix .o, $(basename $(notdir $(SRC)))))
 LIB=libbtree.a
 
 ##############################################################################
-ENABLE_MEMWATCH=no
+ENABLE_MEMWATCH=yes
 
 ifeq ($(ENABLE_MEMWATCH), yes)
     CPPFLAGS += -DMEMWATCH
-    SRC += src/memwatch.c
+    SRC += memwatch.c
 endif
 
 CFLAGS += -D_GNU_SOURCE=1 -D_REENTRANT -g -I./include -I$(THIRDPARTY)/include
@@ -58,4 +58,4 @@ install: $(LIB)
 	cp include/*.h $(THIRDPARTY)/include/guicore -arf
 
 clean: 
-	rm -rf $(OBJS) *.o *~ .*swp objects deps $(CLEANFILE) $(BIN) *.log $(LIB) cscope.* tags
+	rm -rf $(OBJS) *.o *~ .*swp objects deps $(CLEANFILE) $(BIN) *.log $(LIB) cscope.* tags btree

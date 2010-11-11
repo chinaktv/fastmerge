@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include "memwatch.h"
+
 #ifndef  TRUE
 #define  TRUE    1
 #define  FALSE   0
@@ -34,9 +36,9 @@ void btree_close (struct btree * tree );
 void btree_init  (struct btree * tree );
 void btree_insert(struct btree * tree, off_t data);
 int  btree_delete(struct btree * tree, void* data);
-int  btree_find  (const struct btree * tree, void* find_data);
-void btree_query (const struct btree * tree, void* find_data, void*(*handler)(const void*,void*), void * handler_state);
-void btree_print (const struct btree * tree, void (*print)(void *, void*));
+int  btree_find  (struct btree * tree, void* find_data);
+void btree_query (struct btree * tree, void* find_data, void*(*handler)(const void*,void*), void * handler_state);
+void btree_print (struct btree * tree, void (*print)(void *, void*), void *userdata);
 
 #endif 
 

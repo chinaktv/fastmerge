@@ -50,6 +50,7 @@ static off_t  ms_find_free_block(struct memStore * ms, off_t startBlock, off_t S
 struct store * store_open_memory(size_t blockSize, off_t blockCount) 
 {
 	struct store * store = malloc(sizeof(struct store));
+	memset(store, 0, sizeof(struct store));
 	store->functions = &memory_functions;
 	store->store_p = ms_open(blockSize, blockCount);
 	
@@ -59,6 +60,8 @@ struct store * store_open_memory(size_t blockSize, off_t blockCount)
 static struct memStore * ms_open(size_t blockSize, off_t blockCount) 
 {
 	struct memStore * ms = (struct memStore *) malloc(sizeof(struct memStore));
+
+	memset(ms, 0, sizeof(struct memStore));
 
 	ms->store = (void **)calloc(blockCount, sizeof(void **));
 	ms->blockSize = blockSize;
@@ -81,6 +84,7 @@ static void ms_close(struct memStore * ms)
 			free_count++;
 		}
 	}
+	free(ms->store);
 	free(ms);
 }
 
@@ -165,7 +169,6 @@ static off_t ms_find_free_block(struct memStore * ms, off_t startBlock, off_t st
 	}
 	return -1;
 }
-
 
 static void ms_grow_store(struct memStore * ms, off_t newCount) 
 {

@@ -8,6 +8,7 @@
 #include <malloc.h>
 
 #include <stdio.h>
+#include "memwatch.h"
 
 struct store {
 	const struct store_functions * functions;

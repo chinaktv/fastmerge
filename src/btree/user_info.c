@@ -7,7 +7,7 @@
 #include <values.h>
 #include <string.h>
 #include <time.h>
-
+#include <sys/dir.h>
 
 #define STR_KEY 1
 
@@ -37,13 +37,7 @@ struct user_info {
 };
 
 int userinfo_insert(struct btree *tree, char *info_str);
-
-
-void userid_print(user_id id)
-{
-	printf("%d%d%02d%02d%03d%c", id.zipcode, id.y, id.m, id.d, id.order, id.check);
-}
-
+int userinfo_addfile(struct btree *tree, const char *filename);
 
 #define KEY (key[x++] - '0')
 inline void str2time(struct tm *t, const char *key)
@@ -167,21 +161,25 @@ static int insert_eq(struct user_info *old, struct user_info *_new)
 	return -1;
 
 update:
-	printf("%s -> %s\n", _new->name, old->name);
+	fprintf(stderr, "%s -> %s\n", _new->name, old->name);
 	memcpy(old, _new, sizeof(struct user_info));
 
 	return 0;
 }
 
-struct btree *userinfo_create(const char *filename)
+struct btree *userinfo_create()
 {
-	struct store *rand;
+	struct store *user_info_store;
 	struct btree *tree;
-
 	
-	rand = store_open_memory(sizeof(struct user_info), 1000);
-	tree = btree_new_memory(rand, (int(*)(const void *, const void *))compare_user_info, (int (*)(void*, void*))insert_eq);
+	user_info_store = store_open_memory(sizeof(struct user_info), 1000);
+	tree = btree_new_memory(user_info_store, (int(*)(const void *, const void *))compare_user_info, (int (*)(void*, void*))insert_eq);
 
+	return tree;
+}
+
+int userinfo_addfile(struct btree *tree, const char *filename)
+{
 	if (filename) {
 		FILE *fp;
 		char str[512];
@@ -191,36 +189,17 @@ struct btree *userinfo_create(const char *filename)
 					userinfo_insert(tree, str);
 			}
 			fclose(fp);
+
+			return 0;
 		}
 	}
 
-	return tree;
+	return -1;
 }
 
-struct user_info *userinfo_new(struct btree *tree)
-{
-	struct store *oStore;
-	off_t new;
-	struct user_info *new_data;
-
-	if (tree == NULL)
-		return NULL;
-
-	oStore = tree->oStore;
-
-	new = store_new(oStore);
-	new_data = store_read(oStore, new);
-	if  (new_data) {
-		store_write(oStore, new);
-		store_release(oStore, new);
-	}
-
-	return new_data;
-}
 
 static int userinfo_parser(struct user_info *info, char *info_str)
 {
-	// 815300198704187597,move,female,move@qq.com,134120369062,2010-11-02 23:11:47
 	char *p, *key =  info_str;
 	int i = 0;
 
@@ -295,6 +274,7 @@ int userinfo_insert(struct btree *tree, char *info_str)
 	if (new_data == NULL)
 		return -1;
 
+	memset(new_data, 0, sizeof(struct user_info));
 	userinfo_parser(new_data, info_str);
 	store_write(oStore, new);
 	store_release(oStore, new);
@@ -304,67 +284,72 @@ int userinfo_insert(struct btree *tree, char *info_str)
 	return 0;
 }
 
-int userinfo_find(struct btree *tree, const char *card)
+void treenode_print(FILE *fp, struct user_info *i)
 {
-
-	return 0;
+#if STR_KEY
+	fprintf(fp, "%s,"
+			"%s,%s,%s,%s,"
+			"%d-%0d-%0d %02d:%02d:%02d\n",
+			i->card,
+			i->name, i->sex == 'f' ? "female" : "male", i->email, i->mobile,
+			i->update.tm_year + 1900, i->update.tm_mon, i->update.tm_mday, i->update.tm_hour, i->update.tm_min, i->update.tm_sec);
+#else
+	fprintf(fp, "%d%d%02d%02d%03d%c,"
+			"%s,%s,%s,%s,"
+			"%d-%0d-%0d %02d:%02d:%02d\n",
+			i->userid.zipcode, i->userid.y + 1900, i->userid.m, i->userid.d, i->userid.order, i->userid.check,
+			i->name, i->sex == 'f' ? "female" : "male", i->email, i->mobile,
+			i->update.tm_year + 1900, i->update.tm_mon, i->update.tm_mday, i->update.tm_hour, i->update.tm_min, i->update.tm_sec);
+#endif
 }
+
 
 int main(int argc, char **argv)
 {
 	struct btree *tree;
+	DIR *dirp;
+	struct dirent *direp = NULL;
+	FILE *out;
 
-
-	printf("argc=%d\n", argc);
-	if (argc ==  1) {
-		printf("%s <csv file>\n", argv[0]);
+	if (argc < 3) {
+		printf("%s <user_info.csv> <path> [out.csv]\n", argv[0]);
 		return -1;
 	}
+	else if (argc == 3)
+		out = stdout;
+	else if (argc == 4)
+		out = fopen(argv[3], "w+");
 
-	tree = userinfo_create(argv[1]);
-#if 0
-	char *key;
-	struct user_info find_info;
-	printf("start search!\n");
-	fp  =  fopen(argv[1], "r");
-	while (!feof(fp)) {
+	tree = userinfo_create();
+	userinfo_addfile(tree, argv[1]);
 
-		memset(str, 0, 256);
+	dirp = opendir(argv[2]);
 
-		if (fgets(str, 255, fp) == NULL)
-			break;
-		key = strtok(str, ",");
-		if (key == NULL)
-			break;
+	if (dirp) {
+		char filename[256];
+		int x = 0;
+		direp = readdir(dirp);
+		for (; direp != NULL; direp = readdir(dirp)) {
+			if (!strcmp(direp->d_name, ".") || !strcmp(direp->d_name, ".."))
+				continue;
+		
+			sprintf(filename, "%s/%s", argv[2], direp->d_name);
+			userinfo_addfile(tree, filename);
+			x++;
 
-//		strcpy(find_info.card, "321200197611104705");
-//		str2userid(&find_info.userid, "321200197611104705");
-#if STR_KEY
-		strcpy(find_info.card, key);
-#else
-		str2userid(&find_info.userid, key);
-#endif
-		if (btree_find(tree, &find_info) != 1)
-			printf("not found %s\n", key);
+			if (x % 100 == 0)
+				fprintf(stderr, "add %d\n", x);
+		}
+
+		closedir(dirp);
 	}
-	fclose(fp);
-#endif
-#if 0
-#define NUM_OBJECTS 500000
-	for (ind = 0; ind < NUM_OBJECTS; ind++) {
-		off_t num = tree->entries_num;
-		assert(tree->entries_num == NUM_OBJECTS - ind);
-		assert(btree_find(tree, &(inserted[ind])));
 
-		assert(btree_delete(tree, &(inserted[ind])));
-		t = inserted[ind] + 1;
-		assert(!btree_delete(tree, &t));
-
-		assert(tree->entries_num + 1 == num);
-
-	}
-#endif
+	btree_print(tree, (void (*)(void*, void*))treenode_print, out);
+	store_close(tree->oStore);
 	btree_close(tree);
+
+	if (out != stdout)
+		fclose(out);
 
 	return  0;
 }
