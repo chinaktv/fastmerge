@@ -10,8 +10,8 @@
 
 #define ISNULL -1
 
-static void node_init(struct btree_node * node, off_t data );
-int bintree_find     (struct btree * tree, const struct btree_node * node, off_t node_idx, void * find_data);
+static void node_init  (struct btree_node * node, off_t data );
+static int bintree_find(struct btree *tree, const struct btree_node * node, off_t node_idx, void * find_data);
 
 struct btree *btree_new_memory(struct store *store, int (*compare)(const void*, const void*), int (*insert_eq)(void*, void*))
 {
@@ -28,7 +28,6 @@ struct btree *btree_new_memory(struct store *store, int (*compare)(const void*, 
 	return tree;
 }
 
-/*-- Code for inserting new node -------------------------------*/
 static void node_init( struct btree_node * p_node, off_t data )
 {
 	p_node->left = ISNULL;
@@ -40,7 +39,7 @@ static void node_init( struct btree_node * p_node, off_t data )
 
 static void bintree_insert(struct btree * tree, off_t data)
 {
-	struct btree_node * pptr;//, * father;
+	struct btree_node * pptr;
 
 	off_t new_idx;
 	struct btree_node * new;
@@ -291,10 +290,7 @@ static void btree_rotate_up( struct btree * tree, struct btree_node * p_node, of
 	off_t last_read;
 	assert( p_node != NULL );
 
-	/* is p_node the root of the tree? */
 	if  ( p_node->father == ISNULL ) {
-		//        assert( tree->root == p_node );
-
 		return;
 	}
 
@@ -421,7 +417,7 @@ int btree_find (struct btree * tree, void* find_data)
 	return ret;
 }
 
-int bintree_find (struct btree * tree, const struct btree_node * node, off_t node_idx, void * find_data)
+static int bintree_find (struct btree * tree, const struct btree_node * node, off_t node_idx, void * find_data)
 {
 	int ret = -1;
 	int cmp ;
@@ -444,7 +440,7 @@ int bintree_find (struct btree * tree, const struct btree_node * node, off_t nod
 			struct btree_node * left = store_read(tree->nStore, node->left);
 
 			assert(left->father == node_idx);
-			ret = bintree_find (tree, left, node->left, find_data /*, depth+1*/);
+			ret = bintree_find (tree, left, node->left, find_data);
 			store_release(tree->nStore, node->left);
 		}
 	} else {
@@ -454,7 +450,7 @@ int bintree_find (struct btree * tree, const struct btree_node * node, off_t nod
 			struct btree_node * right = store_read(tree->nStore, node->right);
 
 			assert(right->father == node_idx);
-			ret = bintree_find (tree, right, node->right, find_data /*, depth+1*/);
+			ret = bintree_find (tree, right, node->right, find_data);
 			store_release(tree->nStore, node->right);
 		}
 	}
@@ -487,14 +483,8 @@ static void print_subtree(struct btree * tree, struct btree_node * node, void (*
 
 void btree_print(struct btree * tree, void (*print)(void *, void*), void *userdata)
 {
-	if  ( tree->root == ISNULL ) {
-		printf( "@    <<EMPTY BTREE>>\n" );
+	if  ( tree->root == ISNULL ) 
 		return;
-	}
 	print_subtree(tree, store_read(tree->nStore, tree->root), print, userdata);
 	store_release(tree->nStore, tree->root);
-	printf( "\n" );
-
-	fflush( stdout );
-	fflush( stderr );
 }

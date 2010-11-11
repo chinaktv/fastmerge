@@ -53,27 +53,6 @@ static int userinfo_insert(struct btree *tree, char *info_str)
 	return 0;
 }
 
-#if 0
-int userinfo_addfile(struct btree *tree, const char *filename)
-{
-	if (filename) {
-		FILE *fp;
-		char str[512];
-		if ((fp  = fopen(filename, "r")) != NULL) {
-			while (!feof(fp)) {
-				if (fgets(str, 512, fp))
-					userinfo_insert(tree, str);
-			}
-			fclose(fp);
-
-			return 0;
-		}
-	}
-
-	return -1;
-}
-#endif
-
 static int btree_ui_addfile(struct btree_info *bi, const char *filename)
 {
 	if (filename && bi) {
