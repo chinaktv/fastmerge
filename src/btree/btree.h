@@ -26,16 +26,17 @@ struct btree {
 	off_t entries_num;
 	off_t root;
 	int (*compare)(const void*, const void*);
+	int (*insert_eq)(void*, void*);
 };
 
-struct btree *btree_new_memory(struct store *store, int (*compare)(const void*, const void*));
-void btree_close (struct btree * p_btree );
-void btree_init  (struct btree * p_btree );
-void btree_insert(struct btree * p_btree, off_t data);
-int  btree_delete(struct btree * p_btree, void* data);
+struct btree *btree_new_memory(struct store *store, int (*compare)(const void*, const void*), int (*insert_eq)(void*, void*));
+void btree_close (struct btree * tree );
+void btree_init  (struct btree * tree );
+void btree_insert(struct btree * tree, off_t data);
+int  btree_delete(struct btree * tree, void* data);
 int  btree_find  (const struct btree * tree, void* find_data);
 void btree_query (const struct btree * tree, void* find_data, void*(*handler)(const void*,void*), void * handler_state);
-void btree_print (const struct btree  * p_btree );
+void btree_print (const struct btree * tree, void (*print)(void *, void*));
 
 #endif 
 

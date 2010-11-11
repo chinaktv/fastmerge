@@ -6,29 +6,195 @@
 #include <assert.h>
 #include <values.h>
 #include <string.h>
+#include <time.h>
+
+
+#define STR_KEY 1
+
+typedef union {
+	struct {
+		int  zipcode;
+		int  y, m, d;
+		int  order;
+		char check;
+	};
+
+	int key[5];
+}user_id;
 
 struct user_info {
-	off_t id;
-	char card[19];
+#if STR_KEY
+	char card[20];
+#else
+	user_id userid;
+#endif
+
 	char name[20];
 	char email[20];
 	char sex;
 	char mobile[12];
-	time_t update;
+	struct tm update;
 };
+
+int userinfo_insert(struct btree *tree, char *info_str);
+
+
+void userid_print(user_id id)
+{
+	printf("%d%d%02d%02d%03d%c", id.zipcode, id.y, id.m, id.d, id.order, id.check);
+}
+
+
+#define KEY (key[x++] - '0')
+inline void str2time(struct tm *t, const char *key)
+{
+	int x = 0;
+
+	t->tm_year  = KEY * 1000;
+	t->tm_year += KEY * 100;
+	t->tm_year += KEY * 10;
+	t->tm_year += KEY * 1;
+	t->tm_year -= 1900;
+
+	x++;
+	t->tm_mon  = KEY * 10;
+	t->tm_mon += KEY * 1;
+	
+	x++;
+	t->tm_mday  = KEY * 10;
+	t->tm_mday += KEY * 1;
+	
+	x++;
+	t->tm_hour  = KEY * 10;
+	t->tm_hour += KEY * 1;
+	
+	x++;
+	t->tm_min   = KEY * 10;
+	t->tm_min  += KEY * 1;
+	
+	x++;
+	t->tm_sec   = KEY * 10;
+	t->tm_sec  += KEY * 1;
+}
+
+inline int str2userid(user_id *userid, const char *key)
+{
+	int x = 0, len;
+
+	// 422302 1978 0227 033 8
+	len = strlen(key);
+
+	if (len < 15  || len > 18)
+		return -1;
+
+	userid->zipcode  = KEY * 100000;
+	userid->zipcode += KEY * 10000;
+	userid->zipcode += KEY * 1000;
+	userid->zipcode += KEY * 100;
+	userid->zipcode += KEY * 10;
+	userid->zipcode += KEY * 1;
+
+	if (len == 15) {
+		userid->y = 1900;
+	}
+	else {
+		userid->y = KEY * 1000;
+		userid->y += KEY * 100;
+	}
+
+	userid->y += KEY * 10;
+	userid->y += KEY;
+
+	userid->m  = KEY * 10;
+	userid->m += KEY;
+
+	userid->d  = KEY * 10;
+	userid->d += KEY * 1;
+
+	userid->order  = KEY * 100;
+	userid->order += KEY * 10;
+	userid->order += KEY * 1;
+
+	userid->check = key[17];
+
+	return 0;
+}
 
 static int compare_user_info(const struct user_info *a, const struct user_info *b) 
 {
-	return strcmp(a->card, b->card);
-//	if(a->id == b->id) { return EQ; }
-//	if(a->id <  b->id) { return LT; }
-//	return GT;
+#if STR_KEY
+	int x = strncmp(a->card, b->card, 17);
+	if (x < 0)
+		return LT;
+	else if (x > 0)
+		return GT;
+
+	return EQ;
+		
+#else
+	int i = 0, x;
+
+	for (; i < 5; i++) {
+		x = a->userid.key[i] - b->userid.key[i];
+		if (x != 0)
+			return (x < 0) ? LT: GT;
+	}
+
+	return EQ;
+#endif
 }
 
-struct btree *userinfo_create()
+static int insert_eq(struct user_info *old, struct user_info *_new)
 {
-	struct store *rand = store_open_memory(sizeof(struct user_info), 1000);
-	return  btree_new_memory(rand, (int(*)(const void *, const void *))compare_user_info);
+	if (old->update.tm_year < _new->update.tm_year)
+		goto update;
+
+	if (old->update.tm_mon < _new->update.tm_mon)
+		goto update;
+
+	if (old->update.tm_mday < _new->update.tm_mday)
+		goto update;
+
+	if (old->update.tm_hour < _new->update.tm_hour)
+		goto update;
+
+	if (old->update.tm_min < _new->update.tm_min)
+		goto update;
+
+	if (old->update.tm_sec < _new->update.tm_sec)
+		goto update;
+
+	return -1;
+
+update:
+	printf("%s -> %s\n", _new->name, old->name);
+	memcpy(old, _new, sizeof(struct user_info));
+
+	return 0;
+}
+
+struct btree *userinfo_create(const char *filename)
+{
+	struct store *rand;
+	struct btree *tree;
+
+	
+	rand = store_open_memory(sizeof(struct user_info), 1000);
+	tree = btree_new_memory(rand, (int(*)(const void *, const void *))compare_user_info, (int (*)(void*, void*))insert_eq);
+
+	if (filename) {
+		FILE *fp;
+		char str[512];
+		if ((fp  = fopen(filename, "r")) != NULL) {
+			while (!feof(fp)) {
+				if (fgets(str, 512, fp))
+					userinfo_insert(tree, str);
+			}
+			fclose(fp);
+		}
+	}
+
+	return tree;
 }
 
 struct user_info *userinfo_new(struct btree *tree)
@@ -52,16 +218,22 @@ struct user_info *userinfo_new(struct btree *tree)
 	return new_data;
 }
 
-static int userinfo_parser(struct user_info *info, const char *info_str)
+static int userinfo_parser(struct user_info *info, char *info_str)
 {
 	// 815300198704187597,move,female,move@qq.com,134120369062,2010-11-02 23:11:47
-	char *tmp = strdup(info_str);
-	char *key = strtok(tmp, ",");
+	char *p, *key =  info_str;
 	int i = 0;
+
 	while (key) {
+		if ((p = strchr(key, ',')))
+			*p = 0;
 		switch (i) {
 			case 0:
+#if STR_KEY
 				strncpy(info->card, key, sizeof(info->card));
+#else
+				str2userid(&info->userid, key);
+#endif
 				break;
 			case 1:
 				strncpy(info->name, key, sizeof(info->name));
@@ -76,20 +248,37 @@ static int userinfo_parser(struct user_info *info, const char *info_str)
 				strncpy(info->mobile, key, sizeof(info->mobile));
 				break;
 		
-			case 5:
-				// TODO info->update =  
+			case 5: 
+#if 0
+				sscanf(key, "%d-%d-%d %d:%d:%d", &info->update.tm_year, \
+						&info->update.tm_mon, \
+						&info->update.tm_mday,\
+						&info->update.tm_hour,\
+						&info->update.tm_min,\
+						&info->update.tm_sec);
+				info->update.tm_year -= 1900;
+#endif
+
+				str2time(&info->update, key);
 				break;
 		}
 
+		if (p)
+			key = p + 1;
+		else
+			break;
 		i++;
-		key = strtok(NULL, ",");
 	}
 
-//	printf("%s,%s,%s,%s\n", info->card, info->name, info->email, info->mobile);
+#if 0
+	printf("%d-%d-%d-%d-%d-%c, %s,%s,%s, %s", 
+			info->userid.zipcode, info->userid.y, info->userid.m, info->userid.d, info->userid.order, info->userid.check,
+			info->name, info->email, info->mobile, asctime(&info->update));
+#endif
 	return 0;
 }
 
-int userinfo_insert(struct btree *tree, const char *info_str)
+int userinfo_insert(struct btree *tree, char *info_str)
 {
 	off_t new;
 	struct store *oStore;
@@ -99,8 +288,6 @@ int userinfo_insert(struct btree *tree, const char *info_str)
 		return -1;
 
 	oStore = tree->oStore;
-	if (oStore == NULL)
-		return -1;
 
 	new = store_new(oStore);
 	new_data = store_read(oStore, new);
@@ -123,15 +310,9 @@ int userinfo_find(struct btree *tree, const char *card)
 	return 0;
 }
 
-#define NUM_OBJECTS 500000
-
 int main(int argc, char **argv)
 {
-	off_t inserted[NUM_OBJECTS] = {0, };
-	FILE *fp;
-	char str[256], *key;
 	struct btree *tree;
-	struct user_info find_info;
 
 
 	printf("argc=%d\n", argc);
@@ -140,34 +321,36 @@ int main(int argc, char **argv)
 		return -1;
 	}
 
-
-	tree = userinfo_create();
+	tree = userinfo_create(argv[1]);
+#if 0
+	char *key;
+	struct user_info find_info;
+	printf("start search!\n");
 	fp  =  fopen(argv[1], "r");
 	while (!feof(fp)) {
-		memset(str, 0, 256);
-		fgets(str, 255, fp);
-		userinfo_insert(tree, str);
-	}
-	fclose(fp);
 
-	fp  =  fopen(argv[1], "r");
-	while (!feof(fp)) {
 		memset(str, 0, 256);
 
-		fgets(str, 255, fp);
+		if (fgets(str, 255, fp) == NULL)
+			break;
 		key = strtok(str, ",");
 		if (key == NULL)
 			break;
 
-		strncpy(find_info.card, key, sizeof(find_info.card));
+//		strcpy(find_info.card, "321200197611104705");
+//		str2userid(&find_info.userid, "321200197611104705");
+#if STR_KEY
+		strcpy(find_info.card, key);
+#else
+		str2userid(&find_info.userid, key);
+#endif
 		if (btree_find(tree, &find_info) != 1)
-			printf("not found %s\n", find_info.card);
-		else
-			printf("found %s\n", find_info.card);
+			printf("not found %s\n", key);
 	}
 	fclose(fp);
-
+#endif
 #if 0
+#define NUM_OBJECTS 500000
 	for (ind = 0; ind < NUM_OBJECTS; ind++) {
 		off_t num = tree->entries_num;
 		assert(tree->entries_num == NUM_OBJECTS - ind);
