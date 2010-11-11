@@ -6,6 +6,7 @@
 
 #include  "btree.h"
 #include  "store.h"
+#include  "info.h"
 
 #define ISNULL -1
 

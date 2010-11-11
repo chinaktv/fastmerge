@@ -7,15 +7,6 @@
 #include <unistd.h>
 #include "memwatch.h"
 
-#ifndef  TRUE
-#define  TRUE    1
-#define  FALSE   0
-#endif  /* TRUE */
-
-#define LT -1
-#define EQ 0
-#define GT 1
-
 struct  btree_node {
 	off_t left, right, father;
 	off_t  data;

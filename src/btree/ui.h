@@ -18,13 +18,17 @@
 
 typedef struct algorithm {
 	void *_private;
-	int  (*init)(void);
-	int  (*addfile)(const char *filename);
-	void (*out)(const char *file);
-	void (*free)(void);
+	void* (*init)(void);
+	int   (*addfile)(void *info, const char *filename);
+	void  (*out)(void *info, const char *file);
+	void  (*free)(void *info);
 } ui;
 
-int  userinfo_init   (ui *info);
-int  userinfo_addfile(ui *info, const char *filename);
-void userinfo_out    (ui *info, const char *filename);
-void userinfo_free   (ui *info);
+int  ui_init   (ui *info);
+void ui_free   (ui *info);
+int  ui_addfile(ui *info, const char *filename);
+void ui_out    (ui *info, const char *filename);
+
+
+extern ui btree_ui;
+extern ui btree_thread_ui;
