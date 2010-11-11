@@ -99,7 +99,7 @@ static void btree_ui_out(struct btree_info *ui, const char *filename)
 	FILE *out = stdout;
 
 	if (filename) {
-		printf("filename=%s\n");
+		printf("output %s\n", filename);
 		out = fopen(filename, "w+");
 		if (out == NULL)
 			out = stdout;

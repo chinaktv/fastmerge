@@ -24,12 +24,13 @@ int main(int argc, char **argv)
 		outfile = argv[3];
 
 	ui_init(userinfo);
+	ui_addfile(userinfo, argv[1]);
 
 	dirp = opendir(argv[2]);
 
 	if (dirp) {
 		char filename[256];
-		int x = 0;
+//		int x = 0;
 		direp = readdir(dirp);
 		for (; direp != NULL; direp = readdir(dirp)) {
 			if (!strcmp(direp->d_name, ".") || !strcmp(direp->d_name, ".."))
@@ -37,10 +38,10 @@ int main(int argc, char **argv)
 		
 			sprintf(filename, "%s/%s", argv[2], direp->d_name);
 			ui_addfile(userinfo, filename);
-			x++;
+//			x++;
 
-			if (x % 100 == 0)
-				fprintf(stderr, "add %d\n", x);
+//			if (x % 100 == 0)
+//				fprintf(stderr, "add %d\n", x);
 		}
 
 		closedir(dirp);
