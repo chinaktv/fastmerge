@@ -88,7 +88,6 @@ static void bintree_insert(struct btree * tree, off_t data)
 		} else {
 			pptr = NULL;
 		}
-
 	}
 
 	store_release(tree->oStore, data);
@@ -99,8 +98,6 @@ static void bintree_insert(struct btree * tree, off_t data)
 
 void btree_insert(struct btree * tree, off_t data)
 {
-
-	assert( tree != NULL );
 	if(tree->root == ISNULL) {
 		off_t node_idx;
 		struct btree_node * node;
@@ -121,275 +118,6 @@ void btree_insert(struct btree * tree, off_t data)
 	tree->entries_num++;
 }
 
-static off_t write_ptr_to_ptr( struct btree * tree, struct btree_node * ptr, off_t ptr_idx, off_t new )
-{
-
-	off_t ret = ISNULL;
-	struct btree_node * ptr_father;
-
-	assert( ptr != NULL );
-
-	if ( ptr->father == ISNULL ) {
-		ret =  tree->root;
-		tree->root = new;
-	} else {  
-		ptr_father = store_read(tree->nStore, ptr->father);
-		if  ( ptr_father->left == ptr_idx ) {
-			ret =  ptr_father->left;
-			ptr_father->left = new;
-		} else if  ( ptr_father->right == ptr_idx ) {
-			ret =  ptr_father->right;
-			ptr_father->right = new;
-		}
-		store_write(tree->nStore, ptr->father);
-		store_release(tree->nStore, ptr->father);
-	}
-
-	assert(ret != ISNULL);
-
-	return  ret;
-}
-
-static void btree_rotate_left( struct btree  * tree, struct btree_node * a, off_t a_idx )
-{
-	struct btree_node /* ** pp_a, */ * b, * c, * d, * e;
-	off_t b_idx, c_idx, d_idx, e_idx;
-	off_t father_a;
-
-	//   a= store_read(tree->nStore, a_idx);    
-	assert(a != NULL  &&  a->right != ISNULL);
-
-	b_idx = a->left;
-	c_idx = a->right;
-
-	if(b_idx == ISNULL) {
-		b = NULL; 
-	} else {
-		b = store_read(tree->nStore, b_idx);
-	}
-	if(c_idx == ISNULL) {
-		c = NULL; 
-	} else {
-		c = store_read(tree->nStore, c_idx);
-	}
-
-
-	d_idx = c->left;
-	e_idx = c->right;
-
-	if(d_idx == ISNULL) {
-		d = NULL; 
-	} else {
-		d = store_read(tree->nStore, d_idx);
-	}
-	if(e_idx == ISNULL) {
-		e = NULL; 
-	} else {
-		e = store_read(tree->nStore, e_idx);
-	}
-
-	write_ptr_to_ptr(tree, a, a_idx, c_idx);
-
-	c->left = a_idx;
-	c->right = e_idx;
-
-	a->left = b_idx;
-	a->right = d_idx;
-
-	/* fix father pointers */
-	father_a = a->father;
-
-	a->father = c_idx;
-	if ( e != NULL )
-		e->father = c_idx;
-
-	if ( b != NULL )
-		b->father = a_idx;
-	if ( d != NULL )
-		d->father = a_idx;
-
-	c->father = father_a;
-
-	if(a_idx != ISNULL){ store_write(tree->nStore, a_idx); }
-	if(b_idx != ISNULL){ store_write(tree->nStore, b_idx); store_release(tree->nStore, b_idx); }
-	if(c_idx != ISNULL){ store_write(tree->nStore, c_idx); store_release(tree->nStore, c_idx); }
-	if(d_idx != ISNULL){ store_write(tree->nStore, d_idx); store_release(tree->nStore, d_idx); }
-	if(e_idx != ISNULL){ store_write(tree->nStore, e_idx); store_release(tree->nStore, e_idx); }
-
-}
-
-static void btree_rotate_right( struct btree * tree, struct btree_node * a, off_t a_idx )
-{
-	struct btree_node /* ** pp_a, */ * b, * c, * d, * e;
-
-	off_t father_a;
-
-	off_t b_idx, c_idx, d_idx, e_idx;
-
-	assert( a != NULL  &&  a->left != ISNULL );
-
-	b_idx = a->right;
-	c_idx = a->left;
-
-	if(b_idx == ISNULL) {
-		b = NULL; 
-	} else {
-		b = store_read(tree->nStore, b_idx);
-	}
-	if(c_idx == ISNULL) {
-		c = NULL; 
-	} else {
-		c = store_read(tree->nStore, c_idx);
-	}
-
-	d_idx = c->right;
-	e_idx = c->left;
-
-
-	if(d_idx == ISNULL) 
-		d = NULL; 
-	else 
-		d = store_read(tree->nStore, d_idx);
-	if(e_idx == ISNULL) 
-		e = NULL; 
-	else 
-		e = store_read(tree->nStore, e_idx);
-
-	write_ptr_to_ptr( tree, a, a_idx, c_idx);
-	c->right = a_idx;
-	c->left = e_idx;
-
-	a->right = b_idx;
-	a->left = d_idx;
-
-	/* fix father pointers */
-	father_a = a->father;
-
-	a->father = c_idx;
-	if ( e != NULL )
-		e->father = c_idx;
-
-	if ( b != NULL )
-		b->father = a_idx;
-	if ( d != NULL )
-		d->father = a_idx;
-
-	c->father = father_a;
-
-	if(a_idx != ISNULL) {store_write(tree->nStore, a_idx); }
-	if(b_idx != ISNULL) {store_write(tree->nStore, b_idx); store_release(tree->nStore, b_idx);}
-	if(c_idx != ISNULL) {store_write(tree->nStore, c_idx); store_release(tree->nStore, c_idx);}
-	if(d_idx != ISNULL) {store_write(tree->nStore, d_idx); store_release(tree->nStore, d_idx);}
-	if(e_idx != ISNULL) {store_write(tree->nStore, e_idx); store_release(tree->nStore, e_idx);}
-
-}
-
-static void btree_rotate_up( struct btree * tree, struct btree_node * p_node, off_t p_node_idx )
-{
-	struct btree_node * father_ptr;
-	off_t last_read;
-	assert( p_node != NULL );
-
-	if  ( p_node->father == ISNULL ) {
-		return;
-	}
-
-	father_ptr = store_read(tree->nStore, p_node->father);
-	last_read = p_node->father;
-
-	if  ( father_ptr->left == p_node_idx ) {
-		btree_rotate_right( tree, father_ptr, p_node->father);
-
-	} else if  ( father_ptr->right == p_node_idx ) {
-		btree_rotate_left( tree, father_ptr, p_node->father );
-	} else {
-		assert(FALSE); /* something is wrong ! */
-	} 
-	store_release(tree->nStore, last_read);
-}
-
-static off_t get_valid_son( struct btree_node * p_node )
-{
-	off_t ret;
-
-	if ( p_node->right == ISNULL )
-		ret = p_node->left;
-	else 
-		ret = p_node->right;
-
-	return ret;
-}
-
-void btree_delete_node( struct btree * tree, struct btree_node * p_node, off_t p_node_idx )
-{
-	off_t son_idx;
-
-	assert( p_node != NULL );
-	while  ( p_node->left != ISNULL  ||  p_node->right != ISNULL ) {
-		son_idx = get_valid_son( p_node );
-
-		btree_rotate_up( tree, store_read(tree->nStore, son_idx), son_idx );
-		store_release(tree->nStore, son_idx);
-	}
-
-
-	write_ptr_to_ptr(tree, p_node, p_node_idx, ISNULL);
-
-	tree->entries_num--;
-}
-
-int btree_delete(struct btree * tree, void* data)
-{
-	int ret = FALSE;
-	off_t last_read;
-	struct btree_node * p_node;
-
-	assert( tree != NULL );
-	if(tree->root == ISNULL) {
-		return FALSE;
-	}
-
-	p_node = store_read(tree->nStore, tree->root);
-
-	last_read = tree->root;
-	while  ( p_node != NULL ) {
-		void * p_node_data_ptr = store_read(tree->oStore, p_node->data);
-		int cmp = tree->compare(data, p_node_data_ptr);
-		store_release(tree->oStore, p_node->data);
-		if  ( cmp == 0 ) {
-			btree_delete_node( tree, p_node, last_read );
-			store_release(tree->nStore, last_read);
-			ret = TRUE;
-			p_node = NULL;
-		} else {
-			off_t next_read;
-			if(cmp == GT) {
-				if(p_node->right != ISNULL) {
-					next_read = p_node->right;
-				} else {
-					next_read = ISNULL;
-				}
-			} else {
-				if(p_node->left != ISNULL) {
-					next_read = p_node->left;
-				} else {
-					next_read = ISNULL;
-				}
-			}
-			store_release(tree->nStore, last_read);
-			if(next_read != ISNULL) {
-				p_node = store_read(tree->nStore, next_read);
-				last_read = next_read;
-			} else {
-				p_node = NULL;
-			}
-		}
-
-	}
-
-	return ret;
-}
-
 void btree_close( struct btree * tree )
 {
 	struct btree_node * root = store_read(tree->nStore, 0);
@@ -405,10 +133,9 @@ void btree_close( struct btree * tree )
 	store_close(tree->nStore);
 
 	free(tree);
-
 }
 
-int btree_find (struct btree * tree, void* find_data) 
+int btree_find(struct btree * tree, void* find_data) 
 { 
 	int ret;
 	const struct btree_node * root = store_read(tree->nStore, tree->root);
@@ -417,15 +144,14 @@ int btree_find (struct btree * tree, void* find_data)
 	return ret;
 }
 
-static int bintree_find (struct btree * tree, const struct btree_node * node, off_t node_idx, void * find_data)
+static int bintree_find(struct btree * tree, const struct btree_node * node, off_t node_idx, void * find_data)
 {
 	int ret = -1;
 	int cmp ;
 	void * node_data_ptr;
 
-	if (node == NULL) {
+	if (node == NULL) 
 		printf ("Item not found in tree\n");
-	}
 
 	node_data_ptr = store_read(tree->oStore, node->data);
 	cmp = tree->compare(find_data, node_data_ptr);
@@ -443,10 +169,12 @@ static int bintree_find (struct btree * tree, const struct btree_node * node, of
 			ret = bintree_find (tree, left, node->left, find_data);
 			store_release(tree->nStore, node->left);
 		}
-	} else {
+	} 
+	else {
 		if(node->right == ISNULL) {
 			ret = 0; 
-		} else {
+		} 
+		else {
 			struct btree_node * right = store_read(tree->nStore, node->right);
 
 			assert(right->father == node_idx);
@@ -462,7 +190,6 @@ static void print_subtree(struct btree * tree, struct btree_node * node, void (*
 {
 	if  ( node == NULL )
 		return;
-
 
 	if(node->left != ISNULL) {
 		struct btree_node * left = store_read(tree->nStore, node->left);
@@ -488,3 +215,4 @@ void btree_print(struct btree * tree, void (*print)(void *, void*), void *userda
 	print_subtree(tree, store_read(tree->nStore, tree->root), print, userdata);
 	store_release(tree->nStore, tree->root);
 }
+

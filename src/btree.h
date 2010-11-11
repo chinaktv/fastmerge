@@ -12,7 +12,6 @@ struct  btree_node {
 	off_t  data;
 };
 
-
 struct btree {
 	struct store * oStore;
 	struct store * nStore;
@@ -26,9 +25,7 @@ struct btree *btree_new_memory(struct store *store, int (*compare)(const void*, 
 void btree_close (struct btree * tree );
 void btree_init  (struct btree * tree );
 void btree_insert(struct btree * tree, off_t data);
-int  btree_delete(struct btree * tree, void* data);
 int  btree_find  (struct btree * tree, void* find_data);
-void btree_query (struct btree * tree, void* find_data, void*(*handler)(const void*,void*), void * handler_state);
 void btree_print (struct btree * tree, void (*print)(void *, void*), void *userdata);
 
 #endif 

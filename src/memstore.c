@@ -1,21 +1,14 @@
 #include "store.h"
 
-/* Error handling libraries. */
 #include <string.h>
 #include <assert.h>
 #include <errno.h>
 #include <malloc.h>
 
-/**
-  The memStore provides a bulk_storage implementation backed by an array in memory.
-  @see store
-  */
-
 struct memStore {
 	void ** store;
 	size_t blockSize;
 	off_t blockCount;
-	/** Always one greater than the last block returned by newBlock. */
 	off_t newLastBlock;
 	int calledFree;
 	long total;
@@ -42,7 +35,6 @@ const struct store_functions memory_functions = {
 	.free      = (void   (*)(void *, off_t))  ms_freeBlock,
 	.blockSize = (size_t (*)(void *))         ms_blockSize
 };
-
 
 static void   ms_grow_store     (struct memStore * ms, off_t newSize);
 static off_t  ms_find_free_block(struct memStore * ms, off_t startBlock, off_t Stopblock);
@@ -104,7 +96,6 @@ static void ms_writeBlock(const struct memStore * ms, off_t blockNumber)
 {
 	/* This function intentionally left blank. */
 }
-
 
 static off_t ms_newBlock(struct memStore * ms) 
 {
@@ -194,7 +185,6 @@ off_t ms_blockCount(struct memStore * ms)
 
 void ms_print(struct memStore * ms) 
 {
-
 	printf("Memory requests: %ld\n", ms->total);
 }
 

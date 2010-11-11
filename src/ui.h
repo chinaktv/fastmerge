@@ -31,4 +31,4 @@ void ui_out    (ui *info, const char *filename);
 
 
 extern ui btree_ui;
-extern ui btree_thread_ui;
+extern ui bthread_ui;

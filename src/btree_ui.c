@@ -70,7 +70,6 @@ static int btree_ui_addfile(struct btree_info *bi, const char *filename)
 	}
 
 	return -1;
-
 }
 
 static void btree_ui_out(struct btree_info *ui, const char *filename)
