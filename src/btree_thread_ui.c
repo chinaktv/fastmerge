@@ -182,7 +182,7 @@ static struct bthread_info *btree_ui_create(void)
 		bi->node[i].count = 0;
 		bi->node[i].eof   = 0;
 		bi->node[i].bi    = bi;
-		bi->node[i].store = store_open_memory(sizeof(struct user_info), 1000);
+		bi->node[i].store = store_open_memory(sizeof(struct user_info), 102400);
 		bi->node[i].tree  = btree_new_memory(bi->node[i].store, \
 						(int(*)(const void *, const void *))userinfo_compare, (int (*)(void*, void*))userinfo_update);
 		INIT_LIST_HEAD(&bi->node[i].info_str_head);
@@ -194,7 +194,7 @@ static struct bthread_info *btree_ui_create(void)
 	return bi;
 }
 
-static int btree_ui_addfile(struct bthread_info *bi, const char *filename)
+int btree_ui_addfile_fopen(struct bthread_info *bi, const char *filename)
 {
 	if (filename && bi) {
 		FILE *fp;
@@ -222,6 +222,59 @@ static int btree_ui_addfile(struct bthread_info *bi, const char *filename)
 
 			return 0;
 		}
+	}
+
+	return -1;
+}
+
+int btree_ui_addfile_open(struct bthread_info *bi, const char *filename)
+{
+	if (filename && bi) {
+		int fd, len, idx = 0;
+#define BUFMAX 128
+		char buffer[BUFMAX];
+
+		fd = open(filename, O_RDONLY);
+		if (fd < 0)
+			return -1;
+
+		while (1) {
+			char *p;
+			len = read(fd, buffer + idx, BUFMAX - idx);
+			if (len <= 0)
+				break;
+			p = buffer;
+			while (idx < len) {
+				char *x = strchr(p, '\n');
+				if (x) {
+					*x = 0;
+					int mon;
+					struct info_node *node = mq_get(bi->free_queue);
+
+					strncpy(node->str, p, sizeof(node->str));
+
+					if (strlen(node->str) < 20)
+						continue;
+					// 422302197802270338
+					mon = (node->str[10] -'0') * 10 + (node->str[11] -'0') * 1 +
+						(node->str[12] -'0') * 10 + (node->str[13] -'0') * 1;
+
+					mon = mon % MAX_THREAD;
+					NODE_LOCK(&bi->node[mon]);
+					list_add(&node->head, &bi->node[mon].info_str_head);
+					NODE_UNLOCK(&bi->node[mon]);
+					sem_post(&bi->node[mon].sem);
+
+					p = x + 1;
+				}
+				else {
+					idx = BUFMAX - (p - buffer);
+					memmove(buffer, p, idx);
+					break;
+				}
+			}
+		}
+		close(fd);
 	}
 
 	return -1;
@@ -277,7 +330,8 @@ static void btree_ui_free(struct bthread_info *ui)
 
 ui bthread_ui = {
 	.init    = (void *(*)(void))btree_ui_create,
-	.addfile = (int (*)(void*, const char *))btree_ui_addfile,
+//	.addfile = (int (*)(void*, const char *))btree_ui_addfile_fopen,
+	.addfile = (int (*)(void*, const char *))btree_ui_addfile_open,
 	.out     = (void (*)(void*, const char *))btree_ui_out,
 	.free    = (void (*)(void *))btree_ui_free,
 	.end     = (void (*)(void *))btree_ui_end,

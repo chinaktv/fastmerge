@@ -149,10 +149,6 @@ static off_t ms_find_free_block(struct memStore * ms, off_t startBlock, off_t st
 {
 	off_t i;
 
-	if(startBlock < 0) startBlock = 0;
-	if(stopBlock < 0) stopBlock = 0;
-	if(stopBlock > ms->blockCount) stopBlock = ms->blockCount;
-	if(startBlock > stopBlock) startBlock = stopBlock;
 	for(i = startBlock; i < stopBlock; i++) {
 		if(ms->store[i] == 0) {
 			return i;

@@ -17,7 +17,7 @@ struct btree *btree_new_memory(struct store *store, int (*compare)(const void*, 
 	memset(tree, 0, sizeof(struct btree));
 
 	tree->oStore    = store;
-	tree->nStore    = store_open_memory(sizeof(struct btree_node), 100);
+	tree->nStore    = store_open_memory(sizeof(struct btree_node), 1024);
 	tree->compare   = compare;
 	tree->insert_eq = insert_eq;
 
@@ -52,7 +52,13 @@ static void bintree_insert(struct btree * tree, void *data, const char *key)
 
 	while  ( thiz != NULL ) {
 		int cmp = strcmp(key, thiz->key);
-		if (cmp == 0) {
+		if (cmp > 0) {
+			next_read = &thiz->right;
+		}
+		else if (cmp < 0){
+			next_read = &thiz->left;
+		}
+		else  {
 			if (tree->insert_eq) {
 				void * pptr_data_ptr = store_read(tree->oStore, thiz->data);
 				if (tree->insert_eq(pptr_data_ptr, data) == 0)
@@ -60,12 +66,6 @@ static void bintree_insert(struct btree * tree, void *data, const char *key)
 				store_release(tree->oStore, thiz->data, pptr_data_ptr);
 			}
 			break;
-		}
-		else if (cmp > 0) {
-			next_read = &thiz->right;
-		}
-		else {
-			next_read = &thiz->left;
 		}
 		if (*next_read == ISNULL) {
 			struct btree_node * new;
@@ -108,9 +108,7 @@ void btree_insert(struct btree * tree, void *data, const char *key)
 static int bintree_find(struct btree * tree, struct btree_node * node, const char *key, int *depth)
 {
 	int ret = 1;
-	int cmp ;
-
-	cmp = strncmp(key, node->key, sizeof(node->key));
+	int cmp = strncmp(key, node->key, sizeof(node->key));
 
 	if (cmp < 0) {
 		if(node->left == ISNULL) {

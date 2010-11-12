@@ -68902,7 +68902,7 @@ int main(int argc, char **argv)
 	setstate(randstate);
 
 #if 1
-	for (i=0; i<2000000; i++) {
+	for (i=0; i<20000000; i++) {
 		get_user_info(info);
 		printf("%s\n", info);
 	}
@@ -68910,7 +68910,7 @@ int main(int argc, char **argv)
 #if 0
 	for (i=0; i < 10000; i++) {
 		sprintf(filename, "./new_info/%d.csv", i+1);
-		count = random() % 5 + 1;
+		count = random() % 1000 + 1;
 		create_info_file(filename, count);
 	}
 #endif
