@@ -70,6 +70,7 @@ int main(int argc, char **argv)
 		closedir(dirp);
 	}
 #endif
+	ui_end(userinfo);
 //	ui_out(userinfo, outfile);
 	ui_free(userinfo);
 

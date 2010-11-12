@@ -28,20 +28,34 @@ int ui_init(ui *info)
 
 int  ui_addfile(ui *info, const char *filename)
 {
-	return info->addfile(info->_private, filename);
+	if (info->addfile)
+		return info->addfile(info->_private, filename);
+
+	return -1;
 }
 
 void ui_out(ui *info, const char *filename)
 {
-	info->out(info->_private, filename);
+	if (info->out)
+		info->out(info->_private, filename);
 }
 
 void ui_free(ui *info)
 {
-	info->free(info->_private);
+	if (info->free)
+		info->free(info->_private);
 }
 
 int  ui_find(ui *info, const char *key)
 {
-	return info->find(info->_private, key);
+	if (info->find)
+		return info->find(info->_private, key);
+	
+	return -1;
+}
+
+void ui_end(ui *info)
+{
+	if (info->end)
+		info->end(info->_private);
 }

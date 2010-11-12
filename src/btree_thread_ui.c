@@ -16,7 +16,7 @@
 
 #define MAX_THREAD 4
 #define MAX_STR 128
-#define MAX_BUF 1280
+#define MAX_BUF 1024
 
 struct bthread_info;
 
@@ -62,6 +62,7 @@ void mq_free(struct mqueue *mq)
 	}
 	
 	sem_destroy(&mq->get_sem);
+	pthread_mutex_destroy(&mq->lock);
 	free(mq);
 }
 
@@ -149,10 +150,7 @@ void *insert_thread(struct bthread_node *thread_node)
 {
 	struct info_node *str_node;
 	while (!thread_node->eof) {
-		if (sem_wait(&thread_node->sem) != 0) {
-			printf("sem_wait error\n");
-			break;
-		}
+		sem_wait(&thread_node->sem);
 		NODE_LOCK(thread_node);
 		str_node = node_list_get(&thread_node->info_str_head);
 		NODE_UNLOCK(thread_node);
@@ -166,7 +164,7 @@ void *insert_thread(struct bthread_node *thread_node)
 			break;
 	} 
 
-	printf("insert %d pthread exit\n", thread_node->count);
+//	printf("insert %d pthread exit\n", thread_node->count);
 	pthread_exit(0);
 
 	return NULL;
@@ -201,9 +199,7 @@ static int btree_ui_addfile(struct bthread_info *bi, const char *filename)
 	if (filename && bi) {
 		FILE *fp;
 		if ((fp  = fopen(filename, "r")) != NULL) {
-//			int i = 0;
 			while (!feof(fp)) {
-//				printf("i=%d\n", i++);
 				struct info_node *node = mq_get(bi->free_queue);
 
 				if (fgets(node->str, sizeof(node->str), fp)) {
@@ -212,7 +208,9 @@ static int btree_ui_addfile(struct bthread_info *bi, const char *filename)
 					if (strlen(node->str) < 20)
 						continue;
 					// 422302197802270338
-					mon = (node->str[10] -'0') * 10 + (node->str[11] -'0');
+					mon = (node->str[10] -'0') * 10 + (node->str[11] -'0') * 1 +
+						(node->str[12] -'0') * 10 + (node->str[13] -'0') * 1;
+
 					mon = mon % MAX_THREAD;
 					NODE_LOCK(&bi->node[mon]);
 					list_add(&node->head, &bi->node[mon].info_str_head);
@@ -235,7 +233,7 @@ static void btree_ui_out(struct bthread_info *ui, const char *filename)
 	FILE *out = stdout;
 
 	if (filename) {
-		printf("output %s\n", filename);
+		fprintf(stderr, "output %s\n", filename);
 		out = fopen(filename, "w+");
 		if (out == NULL)
 			out = stdout;
@@ -248,7 +246,7 @@ static void btree_ui_out(struct bthread_info *ui, const char *filename)
 		fclose(out);
 }
 
-static void btree_ui_free(struct bthread_info *ui)
+static void btree_ui_end(struct bthread_info *ui)
 {
 	int i;
 	void *value_ptr;
@@ -261,10 +259,18 @@ static void btree_ui_free(struct bthread_info *ui)
 	for (i = 0; i < MAX_THREAD; i++) {
 		pthread_join(ui->node[i].thread, &value_ptr);
 		sem_destroy(&ui->node[i].sem);
+	}
+	mq_free(ui->free_queue);
+}
+
+static void btree_ui_free(struct bthread_info *ui)
+{
+	int i;
+
+	for (i = 0; i < MAX_THREAD; i++) {
 		store_close(ui->node[i].store);
 		btree_close(ui->node[i].tree);
 	}
-	mq_free(ui->free_queue);
 
 	free(ui);
 }
@@ -273,6 +279,7 @@ ui bthread_ui = {
 	.init    = (void *(*)(void))btree_ui_create,
 	.addfile = (int (*)(void*, const char *))btree_ui_addfile,
 	.out     = (void (*)(void*, const char *))btree_ui_out,
-	.free    = (void (*)(void *))btree_ui_free
+	.free    = (void (*)(void *))btree_ui_free,
+	.end     = (void (*)(void *))btree_ui_end,
 };
 

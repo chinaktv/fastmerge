@@ -21,6 +21,7 @@ typedef struct algorithm {
 	void* (*init)(void);
 	int   (*addfile)(void *info, const char *filename);
 	void  (*out)(void *info, const char *file);
+	void  (*end)(void *info);
 	void  (*free)(void *info);
 	int   (*find)(void *info, const char *key);
 } ui;
@@ -30,7 +31,7 @@ void ui_free   (ui *info);
 int  ui_addfile(ui *info, const char *filename);
 void ui_out    (ui *info, const char *filename);
 int  ui_find   (ui *info, const char *key);
-
+void ui_end    (ui *info);
 
 extern ui btree_ui;
 extern ui bthread_ui;
