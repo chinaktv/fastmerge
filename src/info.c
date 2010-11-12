@@ -131,7 +131,7 @@ int userinfo_update(struct user_info *old, struct user_info *_new)
 	return -1;
 
 update:
-	fprintf(stderr, "%s -> %s\n", _new->name, old->name);
+	fprintf(stderr, "[%s]%s -> [%s]%s\n", _new->card, _new->name, old->card, old->name);
 	memcpy(old, _new, sizeof(struct user_info));
 
 	return 0;
@@ -203,14 +203,14 @@ void userinfo_print(FILE *fp, struct user_info *i)
 #if STR_KEY
 	fprintf(fp, "%s,"
 			"%s,%s,%s,%s,"
-			"%d-%0d-%0d %02d:%02d:%02d\n",
+			"%d-%02d-%02d %02d:%02d:%02d\n",
 			i->card,
 			i->name, i->sex == 'f' ? "female" : "male", i->email, i->mobile,
 			i->update.tm_year + 1900, i->update.tm_mon, i->update.tm_mday, i->update.tm_hour, i->update.tm_min, i->update.tm_sec);
 #else
 	fprintf(fp, "%d%d%02d%02d%03d%c,"
 			"%s,%s,%s,%s,"
-			"%d-%0d-%0d %02d:%02d:%02d\n",
+			"%d-%02d-%02d %02d:%02d:%02d\n",
 			i->userid.zipcode, i->userid.y + 1900, i->userid.m, i->userid.d, i->userid.order, i->userid.check,
 			i->name, i->sex == 'f' ? "female" : "male", i->email, i->mobile,
 			i->update.tm_year + 1900, i->update.tm_mon, i->update.tm_mday, i->update.tm_hour, i->update.tm_min, i->update.tm_sec);

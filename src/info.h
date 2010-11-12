@@ -50,8 +50,8 @@ struct user_info {
 	user_id userid;
 #endif
 
-	char name[20];
-	char email[20];
+	char name[32];
+	char email[32];
 	char sex;
 	char mobile[12];
 	struct tm update;
