@@ -101,39 +101,49 @@ int userinfo_compare(const struct user_info *a, const struct user_info *b)
 	return EQ;
 #endif
 #endif
+	return 0;
 }
 
 int userinfo_update(struct user_info *old, struct user_info *_new)
 {
+	struct tm old_t, new_t;
 #if PARSE_INFO
-	if (old->update.tm_year < _new->update.tm_year)
+	old_t = old->update;
+	new_t = _new->update;
+#else
+	char *ap = strrchr(old->str, ',') + 1;
+	char *bp = strrchr(_new->str, ',') + 1;
+
+	str2time(&old_t, ap);
+	str2time(&new_t, bp);
+#endif
+	if (old_t.tm_year < new_t.tm_year)
 		goto update;
 
-	if (old->update.tm_mon < _new->update.tm_mon)
+	if (old_t.tm_mon < new_t.tm_mon)
 		goto update;
 
-	if (old->update.tm_mday < _new->update.tm_mday)
+	if (old_t.tm_mday < new_t.tm_mday)
 		goto update;
 
-	if (old->update.tm_hour < _new->update.tm_hour)
+	if (old_t.tm_hour < new_t.tm_hour)
 		goto update;
 
-	if (old->update.tm_min < _new->update.tm_min)
+	if (old_t.tm_min < new_t.tm_min)
 		goto update;
 
-	if (old->update.tm_sec < _new->update.tm_sec)
+	if (old_t.tm_sec < new_t.tm_sec)
 		goto update;
 
 	return -1;
 
 update:
-	fprintf(stderr, "%s -> %s\n", _new->name, old->name);
-#else
-	char *ap = strrchr(old->str, ',') + 1;
-	char *bp = strrchr(_new->str, ',') + 1;
-
-	if (strcmp(ap, bp) != 0)
-		return -1;
+#if 0
+#if PARSE_INFO
+	printf("%s -> %s", _new->name, old->name);
+#else	
+	printf("%s -> %s", _new->str, old->str);
+#endif
 #endif
 	memcpy(old, _new, sizeof(struct user_info));
 
@@ -224,7 +234,7 @@ void userinfo_print(FILE *fp, struct user_info *i)
 			i->update.tm_year + 1900, i->update.tm_mon, i->update.tm_mday, i->update.tm_hour, i->update.tm_min, i->update.tm_sec);
 #endif
 #else
-	printf("%s", i->str);
+	fprintf(fp, "%s", i->str);
 #endif
 }
 

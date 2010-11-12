@@ -28,7 +28,7 @@ int main(int argc, char **argv)
 
 	ui_init(userinfo);
 	ui_addfile(userinfo, argv[1]);
-#if 1
+#if 0
 	{
 		char *key, str[256];
 		FILE *fp  =  fopen(argv[1], "r");
@@ -64,8 +64,8 @@ int main(int argc, char **argv)
 
 		closedir(dirp);
 	}
-	ui_out(userinfo, outfile);
 #endif
+	ui_out(userinfo, outfile);
 	ui_free(userinfo);
 
 	return  0;

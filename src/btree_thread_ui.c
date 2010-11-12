@@ -163,27 +163,20 @@ void node_list_free(struct list_head *head, struct info_node *node)
 
 static int userinfo_insert(struct btree *tree, char *info_str)
 {
-	off_t new;
-	struct store *oStore;
-	struct user_info *new_data;
+	struct user_info new_data;
+	char key[20] = {0, }, *p;
 
 	if (tree == NULL || info_str == NULL)
 		return -1;
 
-	oStore = tree->oStore;
+	p = strchr(info_str, ',');
 
-	new = store_new(oStore);
-	new_data = store_read(oStore, new);
+	memcpy(key, info_str, p - info_str);
 
-	if (new_data == NULL)
-		return -1;
+	memset(&new_data, 0, sizeof(struct user_info));
+	userinfo_parser(&new_data, info_str);
 
-	memset(new_data, 0, sizeof(struct user_info));
-	userinfo_parser(new_data, info_str);
-	store_write(oStore, new, new_data);
-	store_release(oStore, new, new_data);
-
-	btree_insert(tree, new, NULL);
+	btree_insert(tree, &new_data, key);
 
 	return 0;
 }

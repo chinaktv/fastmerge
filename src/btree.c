@@ -59,15 +59,14 @@ static void bintree_insert(struct btree * tree, void *data, const char *key)
 					store_write(tree->oStore, thiz->data, pptr_data_ptr);
 				store_release(tree->oStore, thiz->data, pptr_data_ptr);
 			}
-
-			thiz = NULL;
 			break;
 		}
-		else if (cmp > 0)
+		else if (cmp > 0) {
 			next_read = &thiz->right;
-		else
+		}
+		else {
 			next_read = &thiz->left;
-
+		}
 		if (*next_read == ISNULL) {
 			struct btree_node * new;
 			off_t data_idx = store_new_write(tree->oStore, data);
@@ -79,8 +78,6 @@ static void bintree_insert(struct btree * tree, void *data, const char *key)
 
 			*next_read = new_idx;
 			store_write(tree->nStore, thiz_idx, thiz);
-
-			break;
 		}
 		store_release(tree->nStore, thiz_idx, thiz);
 
