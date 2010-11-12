@@ -9,6 +9,8 @@
 
 #define ISNULL -1
 
+#define REC_DEPTH 0
+
 struct btree *btree_new_memory(struct store *store, int (*compare)(const void*, const void*), int (*insert_eq)(void*, void*))
 {
 	struct btree * tree = (struct btree *) malloc(sizeof(struct btree));
@@ -31,29 +33,12 @@ static struct btree_node *node_new(struct btree *tree, off_t new_idx, off_t data
 	p_node->right = ISNULL;
 	p_node->data = data;
 
-	strncpy(p_node->key, key, 20);
+	if (key)
+		strncpy(p_node->key, key, 20);
+	else
+		p_node->key[0] = '\0';
 
 	return p_node;
-}
-
-static int btreen_node_compare(struct btree_node *a, struct btree_node *b)
-{
-	int x = strncmp(a->key, b->key, 17);
-	if (x < 0)
-		return LT;
-	else if (x > 0)
-		return GT;
-
-	return EQ;
-}
-
-static void btree_update(struct btree *tree, struct btree_node *node, void *data)
-{
-	void *pptr_data_ptr = store_read(tree->oStore, node->data);
-	
-	memcpy(pptr_data_ptr, data, store_blockSize(tree->oStore));
-	store_write(tree->oStore, node->data, pptr_data_ptr);
-	store_release(tree->oStore, node->data, pptr_data_ptr);
 }
 
 static void bintree_insert(struct btree * tree, void *data, const char *key)
@@ -121,6 +106,59 @@ void btree_insert(struct btree * tree, void *data, const char *key)
 		bintree_insert( tree, data, key);
 
 	tree->entries_num++;
+}
+
+static int bintree_find(struct btree * tree, struct btree_node * node, const char *key, int *depth)
+{
+	int ret = 1;
+	int cmp ;
+
+	cmp = strncmp(key, node->key, sizeof(node->key));
+
+	if (cmp < 0) {
+		if(node->left == ISNULL) {
+			ret = 0;
+		} else {
+			struct btree_node * left = store_read(tree->nStore, node->left);
+			if (depth)
+				*depth += 1;
+			ret = bintree_find (tree, left, key, depth);
+			store_release(tree->nStore, node->left, left);
+		}
+	} 
+	else if (cmp > 0){
+		if(node->right == ISNULL) {
+			ret = 0; 
+		} else {
+			struct btree_node * right = store_read(tree->nStore, node->right);
+
+			if (depth)
+				*depth += 1;
+			ret = bintree_find (tree, right, key, depth);
+			store_release(tree->nStore, node->right, right);
+		}
+	}
+
+	return ret; 
+}
+
+int btree_find(struct btree *tree, const char *key) 
+{ 
+	int ret, depth = 0;
+#if REC_DEPTH
+	static int max_depth = 0;
+#endif
+	struct btree_node * root = store_read(tree->nStore, tree->root);
+	ret = bintree_find(tree, root, key, &depth);
+	store_release(tree->nStore, tree->root, root);
+
+#if REC_DEPTH
+	if (max_depth < depth) {
+		max_depth = depth;
+		printf("max depth = %d\n", max_depth);
+	}
+#endif
+	return ret;
 }
 
 void btree_close( struct btree * tree )

@@ -27,7 +27,6 @@ struct fileStore {
 	int calledFree;
 };
 
-
 static void unpack_bits        (int *, const unsigned char);
 static unsigned char pack_bits (const int *);
 static void ds_mark_block      (struct fileStore *, off_t block, int mark);
@@ -44,13 +43,13 @@ static void  ds_freeBlock   (struct fileStore * fs, off_t blockNumber) ;
 static size_t ds_blockSize  (const struct fileStore * fs);
 
 const struct store_functions disk_functions = {
-	(void   (*)(void *))         &ds_close,
-	(void * (*)(void *, off_t))  &ds_readBlock,
-	(void   (*)(void *, off_t))  &ds_writeBlock,
-	(off_t  (*)(void *       ))  &ds_newBlock,
-	(void   (*)(void *, off_t))  &ds_releaseBlock,
-	(void   (*)(void *, off_t))  &ds_freeBlock,
-	(size_t (*)(void *))         &ds_blockSize
+	(void   (*)(void *))               &ds_close,
+	(void * (*)(void *, off_t))        &ds_readBlock,
+	(void   (*)(void *, off_t, void*)) &ds_writeBlock,
+	(off_t  (*)(void *       ))        &ds_newBlock,
+	(void   (*)(void *, off_t, void*)) &ds_releaseBlock,
+	(void   (*)(void *, off_t))        &ds_freeBlock,
+	(size_t (*)(void *))               &ds_blockSize
 };
 
 struct store * store_open_disk(const char *filename, size_t blockSize, off_t blockCount) 

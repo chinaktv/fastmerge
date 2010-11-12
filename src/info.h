@@ -21,16 +21,8 @@
 
 #include <time.h>
 
-#ifndef  TRUE
-#define  TRUE    1
-#define  FALSE   0
-#endif  /* TRUE */
-
-#define LT -1
-#define EQ 0
-#define GT 1
-
 #define STR_KEY 1
+#define PARSE_INFO 0
 
 typedef union {
 	struct {
@@ -44,6 +36,7 @@ typedef union {
 }user_id;
 
 struct user_info {
+#if PARSE_INFO
 #if STR_KEY
 	char card[20];
 #else
@@ -55,6 +48,9 @@ struct user_info {
 	char sex;
 	char mobile[12];
 	struct tm update;
+#else
+	char str[128];
+#endif
 };
 
 

@@ -9,8 +9,8 @@
 
 struct  btree_node {
 	off_t left, right;
-	char key[19];
 	off_t data;
+	char key[19];
 };
 
 struct btree {
@@ -27,6 +27,7 @@ void btree_close (struct btree * tree );
 void btree_init  (struct btree * tree );
 void btree_insert(struct btree * tree, void *data, const char *key);
 void btree_print (struct btree * tree, void (*print)(void *, void*), void *userdata);
+int  btree_find  (struct btree * tree, const char *key);
 
 #endif 
 

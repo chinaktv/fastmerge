@@ -29,16 +29,20 @@ static struct btree_info *btree_ui_create(void)
 
 static int userinfo_insert(struct btree *tree, char *info_str)
 {
-	off_t new;
 	struct user_info new_data;
+	char key[20] = {0, }, *p;
 
 	if (tree == NULL || info_str == NULL)
 		return -1;
 
+	p = strchr(info_str, ',');
+
+	memcpy(key, info_str, p - info_str);
+
 	memset(&new_data, 0, sizeof(struct user_info));
 	userinfo_parser(&new_data, info_str);
 
-	btree_insert(tree, &new_data, new_data.card);
+	btree_insert(tree, &new_data, key);
 
 	return 0;
 }
@@ -85,10 +89,16 @@ static void btree_ui_free(struct btree_info *ui)
 	free(ui);
 }
 
+static int btree_ui_find(struct btree_info *ui, const char *key)
+{
+	return btree_find(ui->tree, key);
+}
+
 ui btree_ui = {
-	.init    = (void *(*)(void))btree_ui_create,
-	.addfile = (int (*)(void*, const char *))btree_ui_addfile,
+	.init    = (void *(*)(void))              btree_ui_create,
+	.addfile = (int (*)(void*, const char *)) btree_ui_addfile,
 	.out     = (void (*)(void*, const char *))btree_ui_out,
-	.free    = (void (*)(void *))btree_ui_free
+	.free    = (void (*)(void *))             btree_ui_free,
+	.find    = (int (*)(void *, const char*)) btree_ui_find,
 };
 

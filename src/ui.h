@@ -22,12 +22,14 @@ typedef struct algorithm {
 	int   (*addfile)(void *info, const char *filename);
 	void  (*out)(void *info, const char *file);
 	void  (*free)(void *info);
+	int   (*find)(void *info, const char *key);
 } ui;
 
 int  ui_init   (ui *info);
 void ui_free   (ui *info);
 int  ui_addfile(ui *info, const char *filename);
 void ui_out    (ui *info, const char *filename);
+int  ui_find   (ui *info, const char *key);
 
 
 extern ui btree_ui;

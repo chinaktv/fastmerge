@@ -86,30 +86,26 @@ static inline int str2userid(user_id *userid, const char *key)
 
 int userinfo_compare(const struct user_info *a, const struct user_info *b) 
 {
+#if PARSE_INFO
 #if STR_KEY
-	int x = strncmp(a->card, b->card, 17);
-	if (x < 0)
-		return LT;
-	else if (x > 0)
-		return GT;
-
-	return EQ;
-		
+	return strncmp(a->card, b->card, 17);
 #else
 	int i = 0, x;
 
 	for (; i < 5; i++) {
 		x = a->userid.key[i] - b->userid.key[i];
 		if (x != 0)
-			return (x < 0) ? LT: GT;
+			return (x < 0) ? -1: 1;
 	}
 
 	return EQ;
+#endif
 #endif
 }
 
 int userinfo_update(struct user_info *old, struct user_info *_new)
 {
+#if PARSE_INFO
 	if (old->update.tm_year < _new->update.tm_year)
 		goto update;
 
@@ -132,6 +128,13 @@ int userinfo_update(struct user_info *old, struct user_info *_new)
 
 update:
 	fprintf(stderr, "%s -> %s\n", _new->name, old->name);
+#else
+	char *ap = strrchr(old->str, ',') + 1;
+	char *bp = strrchr(_new->str, ',') + 1;
+
+	if (strcmp(ap, bp) != 0)
+		return -1;
+#endif
 	memcpy(old, _new, sizeof(struct user_info));
 
 	return 0;
@@ -141,6 +144,7 @@ update:
 
 int userinfo_parser(struct user_info *info, char *info_str)
 {
+#if PARSE_INFO
 	char *p, *key =  info_str;
 	int i = 0;
 
@@ -195,11 +199,15 @@ int userinfo_parser(struct user_info *info, char *info_str)
 			info->userid.zipcode, info->userid.y, info->userid.m, info->userid.d, info->userid.order, info->userid.check,
 			info->name, info->email, info->mobile, asctime(&info->update));
 #endif
+#else
+	strcpy(info->str, info_str);	
+#endif
 	return 0;
 }
 
 void userinfo_print(FILE *fp, struct user_info *i)
 {
+#if PARSE_INFO
 #if STR_KEY
 	fprintf(fp, "%s,"
 			"%s,%s,%s,%s,"
@@ -214,6 +222,9 @@ void userinfo_print(FILE *fp, struct user_info *i)
 			i->userid.zipcode, i->userid.y + 1900, i->userid.m, i->userid.d, i->userid.order, i->userid.check,
 			i->name, i->sex == 'f' ? "female" : "male", i->email, i->mobile,
 			i->update.tm_year + 1900, i->update.tm_mon, i->update.tm_mday, i->update.tm_hour, i->update.tm_min, i->update.tm_sec);
+#endif
+#else
+	printf("%s", i->str);
 #endif
 }
 

@@ -31,7 +31,7 @@ const struct store_functions memory_functions = {
 	.read      = (void * (*)(void *, off_t))        ms_readBlock,
 	.write     = (void   (*)(void *, off_t, void*)) ms_writeBlock,
 	.new_store = (off_t  (*)(void *       ))        ms_newBlock,
-	.release   = (void   (*)(void *, off_t))        ms_releaseBlock,
+	.release   = (void   (*)(void *, off_t, void*)) ms_releaseBlock,
 	.free      = (void   (*)(void *, off_t))        ms_freeBlock,
 	.blockSize = (size_t (*)(void *))               ms_blockSize
 };

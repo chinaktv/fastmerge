@@ -7,6 +7,8 @@
 #include <sys/dir.h>
 
 #include "ui.h"
+#include "info.h"
+#include "btree.h"
 
 int main(int argc, char **argv)
 {
@@ -26,7 +28,27 @@ int main(int argc, char **argv)
 
 	ui_init(userinfo);
 	ui_addfile(userinfo, argv[1]);
+#if 1
+	{
+		char *key, str[256];
+		FILE *fp  =  fopen(argv[1], "r");
+		while (!feof(fp)) {
+			memset(str, 0, 256);
 
+			if (fgets(str, 255, fp) == NULL)
+				break;
+			key = strtok(str, ",");
+			if (key == NULL)
+				break;
+
+			if (ui_find(userinfo, key) == 0)
+				printf("not found %s\n", key);
+		}
+		fclose(fp);
+	}
+#endif
+
+#if 0
 	dirp = opendir(argv[2]);
 
 	if (dirp) {
@@ -43,6 +65,7 @@ int main(int argc, char **argv)
 		closedir(dirp);
 	}
 	ui_out(userinfo, outfile);
+#endif
 	ui_free(userinfo);
 
 	return  0;
