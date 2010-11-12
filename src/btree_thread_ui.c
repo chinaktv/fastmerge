@@ -26,17 +26,12 @@ struct info_node {
 };
 
 struct mqueue {
-	struct list_head  msg_list;
 	sem_t             get_sem;
 	pthread_mutex_t   lock;
-	int               size;
-
 	struct info_node *node[MAX_BUF];
-
 	int front;
 	int rear;
 };
-
 
 struct mqueue *mq_create(void)
 {
@@ -47,11 +42,13 @@ struct mqueue *mq_create(void)
 	memset(mq, 0, sizeof(struct mqueue));
 
 	sem_init(&mq->get_sem, 0, MAX_BUF - 1);
+	pthread_mutex_init(&mq->lock, 0);
 	for (i = 0; i < MAX_BUF; i++) {
 		mq->node[i] = (struct info_node *)malloc(sizeof(struct info_node));
 	}
 
-	mq->front = mq->rear = 0;
+	mq->front = 0;
+	mq->rear = MAX_BUF - 1;
 
 	return mq;
 }
@@ -59,18 +56,22 @@ struct mqueue *mq_create(void)
 void mq_free(struct mqueue *mq)
 {
 	int i;
-	sem_destroy(&mq->get_sem);
 	for (i = 0; i < MAX_BUF; i++) {
-		free(mq->node[i]);
+		if (mq->node[i])
+			free(mq->node[i]);
 	}
 	
+	sem_destroy(&mq->get_sem);
 	free(mq);
 }
 
 void mq_append(struct mqueue *mq, struct info_node *node)
 {
+	pthread_mutex_lock(&mq->lock);
 	mq->rear = (mq->rear + 1) % MAX_BUF;
 	mq->node[mq->rear] = node;
+	pthread_mutex_unlock(&mq->lock);
+
 	sem_post(&mq->get_sem);
 }
 
@@ -78,7 +79,9 @@ struct info_node *mq_get(struct mqueue *mq)
 {
 	struct info_node *node = NULL;
 	sem_wait(&mq->get_sem);
+
 	node = mq->node[mq->front];
+	mq->node[mq->front] = NULL;
 	mq->front = (mq->front + 1) % MAX_BUF;
 
 	return node;
@@ -105,73 +108,6 @@ struct bthread_info {
 	struct bthread_node node[MAX_THREAD];
 	struct mqueue *free_queue;
 };
-
-#if 0
-static struct mqueue *mqueue_create(int max_size)
-{
-	struct mqueue* queue = NULL;
-
-	queue = (struct mqueue *)malloc(sizeof(struct mqueue));
-	if (queue == NULL) {
-		return NULL;
-	}
-	memset(queue, 0, sizeof(struct mqueue));
-
-	queue->size = max_size;
-	sem_init(&queue->get_sem, 0, 0);
-	pthread_mutex_init(&queue->lock, NULL);
-
-	INIT_LIST_HEAD(&queue->msg_list);
-
-	return queue;
-}
-
-static void mqueue_close(struct mqueue *queue)
-{
-	/*make the msg scheduler keep running*/
-	sem_post(&queue->get_sem);
-	sem_destroy(&queue->get_sem);
-	pthread_mutex_destroy(&queue->lock);
-	free(queue);
-}
-
-#if 1
-#define QUEUE_LOCK(queue)    pthread_mutex_lock(&(queue)->lock)
-#define QUEUE_UNLOCK(queue)  pthread_mutex_unlock(&(queue)->lock)
-#else
-#define QUEUE_LOCK(queue)   
-#define QUEUE_UNLOCK(queue)
-#endif
-
-static int mqueue_send(struct mqueue *queue, struct info_node *node)
-{
-	QUEUE_LOCK(queue);
-	list_add_tail(&node->head, &queue->msg_list);
-	QUEUE_UNLOCK(queue);
-	sem_post(&queue->get_sem);
-
-	return 0;
-}
-
-static struct info_node *mqueue_get(struct mqueue *queue)
-{
-	struct info_node* node = NULL;
-	struct list_head* pos;
-	struct list_head* n;
-
-	sem_wait(&queue->get_sem);
-
-	QUEUE_LOCK(queue);
-	list_for_each_safe( pos, n, &queue->msg_list ) {
-		node = list_entry(pos, struct info_node, head);
-		list_del(pos);
-		break;
-	}
-	QUEUE_UNLOCK(queue);
-
-	return node;
-}
-#endif
 
 struct info_node *node_list_get(struct list_head *head)
 {
@@ -270,7 +206,7 @@ static int btree_ui_addfile(struct bthread_info *bi, const char *filename)
 //				printf("i=%d\n", i++);
 				struct info_node *node = mq_get(bi->free_queue);
 
-				if (fgets(node->str, 512, fp)) {
+				if (fgets(node->str, sizeof(node->str), fp)) {
 					int mon;
 
 					if (strlen(node->str) < 20)
