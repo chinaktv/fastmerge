@@ -41,3 +41,7 @@ void ui_free(ui *info)
 	info->free(info->_private);
 }
 
+int  ui_find(ui *info, const char *key)
+{
+	return info->find(info->_private, key);
+}

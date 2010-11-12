@@ -70,7 +70,6 @@ static int btree_ui_addfile(struct btree_info *bi, const char *filename)
 	}
 
 	return -1;
-
 }
 
 static void btree_ui_out(struct btree_info *ui, const char *filename)
@@ -96,10 +95,18 @@ static void btree_ui_free(struct btree_info *ui)
 	free(ui);
 }
 
+static int btree_ui_find(struct btree_info *ui, const char *key)
+{
+	struct user_info new_data;
+	strncpy(new_data.card, key, sizeof(new_data.card));
+	return btree_find(ui->tree, &new_data);
+}
+
 ui btree_ui = {
-	.init    = (void *(*)(void))btree_ui_create,
-	.addfile = (int (*)(void*, const char *))btree_ui_addfile,
+	.init    = (void *(*)(void))              btree_ui_create,
+	.addfile = (int (*)(void*, const char *)) btree_ui_addfile,
 	.out     = (void (*)(void*, const char *))btree_ui_out,
-	.free    = (void (*)(void *))btree_ui_free
+	.free    = (void (*)(void *))             btree_ui_free,
+	.find    = (int (*)(void *, const char*)) btree_ui_find,
 };
 

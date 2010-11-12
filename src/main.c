@@ -25,12 +25,31 @@ int main(int argc, char **argv)
 
 	ui_init(userinfo);
 	ui_addfile(userinfo, argv[1]);
+#if 1
+	{
+		char *key, str[256];
+		FILE *fp  =  fopen(argv[1], "r");
+		while (!feof(fp)) {
+			memset(str, 0, 256);
 
+			if (fgets(str, 255, fp) == NULL)
+				break;
+			key = strtok(str, ",");
+			if (key == NULL)
+				break;
+
+			if (ui_find(userinfo, key) == 0)
+				printf("not found %s\n", key);
+		}
+		fclose(fp);
+	}
+#endif
+
+#if 0
 	dirp = opendir(argv[2]);
 
 	if (dirp) {
 		char filename[256];
-//		int x = 0;
 		direp = readdir(dirp);
 		for (; direp != NULL; direp = readdir(dirp)) {
 			if (!strcmp(direp->d_name, ".") || !strcmp(direp->d_name, ".."))
@@ -38,15 +57,12 @@ int main(int argc, char **argv)
 		
 			sprintf(filename, "%s/%s", argv[2], direp->d_name);
 			ui_addfile(userinfo, filename);
-//			x++;
-
-//			if (x % 100 == 0)
-//				fprintf(stderr, "add %d\n", x);
 		}
 
 		closedir(dirp);
 	}
 	ui_out(userinfo, outfile);
+#endif
 	ui_free(userinfo);
 
 	return  0;
