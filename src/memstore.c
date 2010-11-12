@@ -17,9 +17,9 @@ struct memStore {
 static struct memStore *ms_open(size_t blockSize, off_t blockCount);
 static void   ms_close       (struct memStore * ms);
 static void * ms_readBlock   (struct memStore * ms, off_t blockNumber);
-static void   ms_writeBlock  (const struct memStore * mem, off_t blockNumber);
+static void   ms_writeBlock  (struct memStore * ms, off_t blockNumber, void *block);
 static off_t  ms_newBlock    (struct memStore * ms);
-static void   ms_releaseBlock(const struct memStore * ms, off_t blockNumber);
+static void   ms_releaseBlock(struct memStore * ms, off_t blockNumber, void *block);
 static void   ms_freeBlock   (struct memStore * ms, off_t blockNumber);
 static size_t ms_blockSize   (struct memStore * ms);
 
@@ -27,13 +27,13 @@ off_t ms_blockCount(struct memStore * ms);
 void ms_print(struct memStore * ms);
 
 const struct store_functions memory_functions = {
-	.close     = (void   (*)(void *))         ms_close,
-	.read      = (void * (*)(void *, off_t))  ms_readBlock,
-	.write     = (void   (*)(void *, off_t))  ms_writeBlock,
-	.new_store = (off_t  (*)(void *       ))  ms_newBlock,
-	.release   = (void   (*)(void *, off_t))  ms_releaseBlock,
-	.free      = (void   (*)(void *, off_t))  ms_freeBlock,
-	.blockSize = (size_t (*)(void *))         ms_blockSize
+	.close     = (void   (*)(void *))               ms_close,
+	.read      = (void * (*)(void *, off_t))        ms_readBlock,
+	.write     = (void   (*)(void *, off_t, void*)) ms_writeBlock,
+	.new_store = (off_t  (*)(void *       ))        ms_newBlock,
+	.release   = (void   (*)(void *, off_t))        ms_releaseBlock,
+	.free      = (void   (*)(void *, off_t))        ms_freeBlock,
+	.blockSize = (size_t (*)(void *))               ms_blockSize
 };
 
 static void   ms_grow_store     (struct memStore * ms, off_t newSize);
@@ -87,12 +87,12 @@ static void *ms_readBlock(struct memStore * ms, off_t blockNumber)
 	return ms->store[blockNumber];
 }
 
-static void ms_releaseBlock(const struct memStore * ms, off_t blockNumber) 
+static void ms_releaseBlock(struct memStore * ms, off_t blockNumber, void *block) 
 {
 	/* This function intentionally left blank. */
 }
 
-static void ms_writeBlock(const struct memStore * ms, off_t blockNumber) 
+static void ms_writeBlock(struct memStore * ms, off_t blockNumber, void *block) 
 {
 	/* This function intentionally left blank. */
 }
@@ -188,8 +188,3 @@ void ms_print(struct memStore * ms)
 	printf("Memory requests: %ld\n", ms->total);
 }
 
-void store_close(struct store * store) 
-{
-	(*(store->functions->close))(store->store_p);
-	free(store);
-}

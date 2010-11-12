@@ -20,7 +20,8 @@ static struct btree_info *btree_ui_create(void)
 {
 	struct btree_info *bi = (struct btree_info*)malloc(sizeof(struct btree_info));
 
-	bi->userinfo_store = store_open_memory(sizeof(struct user_info), 1000);
+	bi->userinfo_store = store_open_memory(sizeof(struct user_info), 1024);
+//	bi->userinfo_store = store_open_disk("/tmp/temp", sizeof(struct user_info), 1024);
 	bi->tree = btree_new_memory(bi->userinfo_store, (int(*)(const void *, const void *))userinfo_compare, (int (*)(void*, void*))userinfo_update);
 
 	return bi;
@@ -29,26 +30,15 @@ static struct btree_info *btree_ui_create(void)
 static int userinfo_insert(struct btree *tree, char *info_str)
 {
 	off_t new;
-	struct store *oStore;
-	struct user_info *new_data;
+	struct user_info new_data;
 
 	if (tree == NULL || info_str == NULL)
 		return -1;
 
-	oStore = tree->oStore;
+	memset(&new_data, 0, sizeof(struct user_info));
+	userinfo_parser(&new_data, info_str);
 
-	new = store_new(oStore);
-	new_data = store_read(oStore, new);
-
-	if (new_data == NULL)
-		return -1;
-
-	memset(new_data, 0, sizeof(struct user_info));
-	userinfo_parser(new_data, info_str);
-	store_write(oStore, new);
-	store_release(oStore, new);
-
-	btree_insert(tree, new);
+	btree_insert(tree, &new_data, new_data.card);
 
 	return 0;
 }

@@ -14,8 +14,8 @@ int main(int argc, char **argv)
 	struct dirent *direp = NULL;
 	char *outfile = NULL;
 
-//	ui *userinfo = &btree_ui;
-	ui *userinfo = &bthread_ui;
+	ui *userinfo = &btree_ui;
+//	ui *userinfo = &bthread_ui;
 
 	if (argc < 3) {
 		printf("%s <user_info.csv> <path> [out.csv]\n", argv[0]);

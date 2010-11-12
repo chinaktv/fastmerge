@@ -98,12 +98,11 @@ static void ds_close(struct fileStore * fs)
 	free(fs);
 }
 
-static void * ds_readBlock(const struct fileStore * fs, off_t blockNumber) 
+static void *ds_readBlock(const struct fileStore * fs, off_t blockNumber) 
 {
 	void * retVal;
 	LSEEK((fs->data_file, blockNumber * fs->blockSize, SEEK_SET));
 	retVal = malloc(fs->blockSize /* * sizeof(char)*/);
-	//READ((fs->data_file, retVal, fs->blockSize));
 	read(fs->data_file, retVal, fs->blockSize);
 	return retVal;
 } 

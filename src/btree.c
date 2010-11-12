@@ -1,6 +1,5 @@
 #include  <stdio.h>
 #include  <stdlib.h>
-#include  <assert.h>
 #include  <memory.h>
 #include  <stdarg.h>
 
@@ -9,9 +8,6 @@
 #include  "info.h"
 
 #define ISNULL -1
-
-static void node_init  (struct btree_node * node, off_t data );
-static int bintree_find(struct btree *tree, const struct btree_node * node, off_t node_idx, void * find_data);
 
 struct btree *btree_new_memory(struct store *store, int (*compare)(const void*, const void*), int (*insert_eq)(void*, void*))
 {
@@ -28,92 +24,101 @@ struct btree *btree_new_memory(struct store *store, int (*compare)(const void*, 
 	return tree;
 }
 
-static void node_init( struct btree_node * p_node, off_t data )
+static struct btree_node *node_new(struct btree *tree, off_t new_idx, off_t data, const char *key)
 {
+	struct btree_node * p_node = store_read(tree->nStore, new_idx);
 	p_node->left = ISNULL;
 	p_node->right = ISNULL;
-	p_node->father = ISNULL;
-
 	p_node->data = data;
+
+	strncpy(p_node->key, key, 20);
+
+	return p_node;
 }
 
-static void bintree_insert(struct btree * tree, off_t data)
+static int btreen_node_compare(struct btree_node *a, struct btree_node *b)
 {
-	struct btree_node * pptr;
+	int x = strncmp(a->key, b->key, 17);
+	if (x < 0)
+		return LT;
+	else if (x > 0)
+		return GT;
 
-	off_t new_idx;
-	struct btree_node * new;
-	off_t last_read = tree->root;
-	off_t next_read;
+	return EQ;
+}
 
-	void * data_ptr = store_read(tree->oStore, data);
+static void btree_update(struct btree *tree, struct btree_node *node, void *data)
+{
+	void *pptr_data_ptr = store_read(tree->oStore, node->data);
+	
+	memcpy(pptr_data_ptr, data, store_blockSize(tree->oStore));
+	store_write(tree->oStore, node->data, pptr_data_ptr);
+	store_release(tree->oStore, node->data, pptr_data_ptr);
+}
 
-	pptr= store_read(tree->nStore, tree->root);
+static void bintree_insert(struct btree * tree, void *data, const char *key)
+{
+	struct btree_node * thiz;
 
-	new_idx = store_new(tree->nStore);
-	new = store_read(tree->nStore, new_idx);
-	node_init(new, data);
+	off_t thiz_idx = tree->root;
+	off_t *next_read;
 
-	while  ( pptr != NULL ) {
-		void * pptr_data_ptr = store_read(tree->oStore, pptr->data);
-		int cmp = tree->compare(data_ptr, pptr_data_ptr);
-		store_release(tree->oStore, pptr->data);
-		if(cmp == GT) {
-			next_read = pptr->right;
-			if(next_read == ISNULL) {
-				pptr->right = new_idx;
-				new->father = last_read;
-				store_write(tree->nStore, last_read);
+	thiz = store_read(tree->nStore, thiz_idx);
+
+	while  ( thiz != NULL ) {
+		int cmp = strcmp(key, thiz->key);
+		if (cmp == 0) {
+			if (tree->insert_eq) {
+				void * pptr_data_ptr = store_read(tree->oStore, thiz->data);
+				if (tree->insert_eq(pptr_data_ptr, data) == 0)
+					store_write(tree->oStore, thiz->data, pptr_data_ptr);
+				store_release(tree->oStore, thiz->data, pptr_data_ptr);
 			}
 
-		} else if (cmp == LT){
-			next_read = pptr->left;
-			if(next_read == ISNULL) {
-				pptr->left = new_idx;
-				new->father = last_read;
-				store_write(tree->nStore, last_read);
-			}
-
-		}
-		else {
-			if (tree->insert_eq)
-				tree->insert_eq(pptr_data_ptr, data_ptr);
-			pptr = NULL;
+			thiz = NULL;
 			break;
 		}
-		store_release(tree->nStore, last_read);
-		if(next_read != ISNULL) {
-			pptr = store_read(tree->nStore, next_read);
-			last_read = next_read;
-		} else {
-			pptr = NULL;
+		else if (cmp > 0)
+			next_read = &thiz->right;
+		else
+			next_read = &thiz->left;
+
+		if (*next_read == ISNULL) {
+			struct btree_node * new;
+			off_t data_idx = store_new_write(tree->oStore, data);
+			off_t new_idx = store_new(tree->nStore);
+
+			new = node_new(tree, new_idx, data_idx, key);
+			store_write(tree->nStore, new_idx, new);
+			store_release(tree->nStore, new_idx, new);
+
+			*next_read = new_idx;
+			store_write(tree->nStore, thiz_idx, thiz);
+
+			break;
 		}
+		store_release(tree->nStore, thiz_idx, thiz);
+
+		thiz = store_read(tree->nStore, *next_read);
+		thiz_idx = *next_read;
 	}
-
-	store_release(tree->oStore, data);
-
-	store_write(tree->nStore, new_idx);
-	store_release(tree->nStore, new_idx);
 }
 
-void btree_insert(struct btree * tree, off_t data)
+void btree_insert(struct btree * tree, void *data, const char *key)
 {
 	if(tree->root == ISNULL) {
-		off_t node_idx;
 		struct btree_node * node;
+		off_t node_idx = store_new(tree->nStore);
+		off_t data_idx = store_new_write(tree->oStore, data);
 
-		assert(tree->entries_num == 0);
-
-		node_idx = store_new(tree->nStore);
-		node = store_read(tree->nStore, node_idx);
-		node_init(node,data);
-		store_write(tree->nStore, node_idx);
-		store_release(tree->nStore, node_idx);
+		node = node_new(tree, node_idx, data_idx, key);
+		store_write(tree->nStore, node_idx, node);
+		store_release(tree->nStore, node_idx, node);
 
 		tree->root = node_idx;
 
 	} else
-		bintree_insert( tree, data );
+		bintree_insert( tree, data, key);
 
 	tree->entries_num++;
 }
@@ -125,66 +130,13 @@ void btree_close( struct btree * tree )
 	root->data = tree->root;
 	root->left = tree->entries_num;
 
-	store_write  (tree->nStore, 0);
-	store_release(tree->nStore, 0);
-
-	assert( tree != NULL );
+	store_write  (tree->nStore, 0, root);
+	store_release(tree->nStore, 0, root);
 
 	store_close(tree->nStore);
 
 	free(tree);
 }
-
-int btree_find(struct btree * tree, void* find_data) 
-{ 
-	int ret;
-	const struct btree_node * root = store_read(tree->nStore, tree->root);
-	ret = bintree_find(tree, root, tree->root, find_data);
-	store_release(tree->nStore, tree->root);
-	return ret;
-}
-
-static int bintree_find(struct btree * tree, const struct btree_node * node, off_t node_idx, void * find_data)
-{
-	int ret = -1;
-	int cmp ;
-	void * node_data_ptr;
-
-	if (node == NULL) 
-		printf ("Item not found in tree\n");
-
-	node_data_ptr = store_read(tree->oStore, node->data);
-	cmp = tree->compare(find_data, node_data_ptr);
-	store_release(tree->oStore, node->data);
-
-	if(cmp == EQ) {
-		ret = 1;
-	} else if (cmp == LT) {
-		if(node->left == ISNULL) {
-			ret = 0;
-		} else {
-			struct btree_node * left = store_read(tree->nStore, node->left);
-
-			assert(left->father == node_idx);
-			ret = bintree_find (tree, left, node->left, find_data);
-			store_release(tree->nStore, node->left);
-		}
-	} 
-	else {
-		if(node->right == ISNULL) {
-			ret = 0; 
-		} 
-		else {
-			struct btree_node * right = store_read(tree->nStore, node->right);
-
-			assert(right->father == node_idx);
-			ret = bintree_find (tree, right, node->right, find_data);
-			store_release(tree->nStore, node->right);
-		}
-	}
-
-	return ret; 
-} 
 
 static void print_subtree(struct btree * tree, struct btree_node * node, void (*print)(void *, void*), void *userdata)
 {
@@ -195,7 +147,7 @@ static void print_subtree(struct btree * tree, struct btree_node * node, void (*
 		struct btree_node * left = store_read(tree->nStore, node->left);
 
 		print_subtree(tree, left, print, userdata);
-		store_release(tree->nStore, node->left);
+		store_release(tree->nStore, node->left, left);
 	}
 	if (print)
 		print(userdata, store_read(tree->oStore, node->data));
@@ -204,15 +156,18 @@ static void print_subtree(struct btree * tree, struct btree_node * node, void (*
 		struct btree_node * right = store_read(tree->nStore, node->right);
 
 		print_subtree(tree, right, print, userdata);
-		store_release(tree->nStore, node->right);
+		store_release(tree->nStore, node->right, right);
 	}
 }
 
 void btree_print(struct btree * tree, void (*print)(void *, void*), void *userdata)
 {
+	struct btree_node *node;
 	if  ( tree->root == ISNULL ) 
 		return;
-	print_subtree(tree, store_read(tree->nStore, tree->root), print, userdata);
-	store_release(tree->nStore, tree->root);
+
+	node = store_read(tree->nStore, tree->root);
+	print_subtree(tree, node, print, userdata);
+	store_release(tree->nStore, tree->root, node);
 }
 

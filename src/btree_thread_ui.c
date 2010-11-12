@@ -180,10 +180,10 @@ static int userinfo_insert(struct btree *tree, char *info_str)
 
 	memset(new_data, 0, sizeof(struct user_info));
 	userinfo_parser(new_data, info_str);
-	store_write(oStore, new);
-	store_release(oStore, new);
+	store_write(oStore, new, new_data);
+	store_release(oStore, new, new_data);
 
-	btree_insert(tree, new);
+	btree_insert(tree, new, NULL);
 
 	return 0;
 }

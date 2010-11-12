@@ -8,8 +8,9 @@
 #include "memwatch.h"
 
 struct  btree_node {
-	off_t left, right, father;
-	off_t  data;
+	off_t left, right;
+	char key[19];
+	off_t data;
 };
 
 struct btree {
@@ -24,8 +25,7 @@ struct btree {
 struct btree *btree_new_memory(struct store *store, int (*compare)(const void*, const void*), int (*insert_eq)(void*, void*));
 void btree_close (struct btree * tree );
 void btree_init  (struct btree * tree );
-void btree_insert(struct btree * tree, off_t data);
-int  btree_find  (struct btree * tree, void* find_data);
+void btree_insert(struct btree * tree, void *data, const char *key);
 void btree_print (struct btree * tree, void (*print)(void *, void*), void *userdata);
 
 #endif 
