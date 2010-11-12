@@ -16,22 +16,27 @@ int main(int argc, char **argv)
 	struct dirent *direp = NULL;
 	char *outfile = NULL;
 
-	ui *userinfo = &btree_ui;
-//	ui *userinfo = &bthread_ui;
-
-	if (argc < 3) {
-		printf("%s <user_info.csv> <path> [out.csv]\n", argv[0]);
+	ui *userinfo;
+	
+	if (argc < 4) {
+		printf("%s <user_info.csv> <1/2> <path> [out.csv]\n", argv[0]);
 		return -1;
 	}
-	if (argc == 4)
-		outfile = argv[3];
+
+	if (argv[1][0] == '1')
+		userinfo = &btree_ui;
+	else if (argv[1][0] == '2')
+		userinfo = &bthread_ui;
+
+	if (argc == 5)
+		outfile = argv[4];
 
 	ui_init(userinfo);
-	ui_addfile(userinfo, argv[1]);
+	ui_addfile(userinfo, argv[2]);
 #if 0
 	{
 		char *key, str[256];
-		FILE *fp  =  fopen(argv[1], "r");
+		FILE *fp  =  fopen(argv[2], "r");
 		while (!feof(fp)) {
 			memset(str, 0, 256);
 
@@ -49,7 +54,7 @@ int main(int argc, char **argv)
 #endif
 
 #if 0
-	dirp = opendir(argv[2]);
+	dirp = opendir(argv[3]);
 
 	if (dirp) {
 		char filename[256];
@@ -58,14 +63,14 @@ int main(int argc, char **argv)
 			if (!strcmp(direp->d_name, ".") || !strcmp(direp->d_name, ".."))
 				continue;
 		
-			sprintf(filename, "%s/%s", argv[2], direp->d_name);
+			sprintf(filename, "%s/%s", argv[3], direp->d_name);
 			ui_addfile(userinfo, filename);
 		}
 
 		closedir(dirp);
 	}
 #endif
-	ui_out(userinfo, outfile);
+//	ui_out(userinfo, outfile);
 	ui_free(userinfo);
 
 	return  0;

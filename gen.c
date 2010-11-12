@@ -68902,7 +68902,7 @@ int main(int argc, char **argv)
 	setstate(randstate);
 
 #if 1
-	for (i=0; i<200000; i++) {
+	for (i=0; i<2000000; i++) {
 		get_user_info(info);
 		printf("%s\n", info);
 	}
