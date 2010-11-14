@@ -15,6 +15,7 @@ int main(int argc, char **argv)
 	DIR *dirp;
 	struct dirent *direp = NULL;
 	char *outfile = NULL;
+	int add, update;
 
 	ui *userinfo;
 	
@@ -32,7 +33,10 @@ int main(int argc, char **argv)
 		outfile = argv[4];
 
 	ui_init(userinfo);
-	ui_addfile(userinfo, argv[2]);
+	add = update = 0;
+	ui_addfile(userinfo, argv[2], &add, &update);
+//	if (!btree_isbalance(userinfo->tree))
+//		printf("isn't balance\n");
 #if 0
 	{
 		char *key, str[256];
@@ -64,14 +68,18 @@ int main(int argc, char **argv)
 				continue;
 		
 			sprintf(filename, "%s/%s", argv[3], direp->d_name);
-			ui_addfile(userinfo, filename);
+			add = update = 0;
+			ui_addfile(userinfo, filename, &add, &update);
+
+			if (update != 0)
+				printf("%s add %d, update %d\n", filename, add, update);
 		}
 
 		closedir(dirp);
 	}
 #endif
 	ui_end(userinfo);
-//	ui_out(userinfo, outfile);
+	ui_out(userinfo, outfile);
 	ui_free(userinfo);
 
 	return  0;

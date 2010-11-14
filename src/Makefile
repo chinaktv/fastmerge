@@ -16,7 +16,7 @@ OBJS=$(addprefix objects/, $(addsuffix .o, $(basename $(notdir $(SRC)))))
 LIB=libbtree.a
 
 ##############################################################################
-ENABLE_MEMWATCH=no
+ENABLE_MEMWATCH=yes
 
 ifeq ($(ENABLE_MEMWATCH), yes)
     CPPFLAGS += -DMEMWATCH

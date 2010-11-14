@@ -26,10 +26,10 @@ int ui_init(ui *info)
 	return 0;
 }
 
-int  ui_addfile(ui *info, const char *filename)
+int  ui_addfile(ui *info, const char *filename, int *add, int *update)
 {
 	if (info->addfile)
-		return info->addfile(info->_private, filename);
+		return info->addfile(info->_private, filename, add, update);
 
 	return -1;
 }

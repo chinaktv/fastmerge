@@ -27,7 +27,7 @@ static struct btree_info *btree_ui_create(void)
 	return bi;
 }
 
-static int userinfo_insert(struct btree *tree, char *info_str)
+static int userinfo_insert(struct btree *tree, char *info_str, int *add, int *update)
 {
 	struct user_info new_data;
 	char key[20] = {0, }, *p;
@@ -42,12 +42,12 @@ static int userinfo_insert(struct btree *tree, char *info_str)
 	memset(&new_data, 0, sizeof(struct user_info));
 	userinfo_parser(&new_data, info_str);
 
-	btree_insert(tree, &new_data, key);
+	btree_insert(tree, &new_data, key, add, update);
 
 	return 0;
 }
 
-static int btree_ui_addfile(struct btree_info *bi, const char *filename)
+static int btree_ui_addfile(struct btree_info *bi, const char *filename, int *add, int *update)
 {
 	if (filename && bi) {
 		FILE *fp;
@@ -55,7 +55,7 @@ static int btree_ui_addfile(struct btree_info *bi, const char *filename)
 		if ((fp  = fopen(filename, "r")) != NULL) {
 			while (!feof(fp)) {
 				if (fgets(str, 512, fp))
-					userinfo_insert(bi->tree, str);
+					userinfo_insert(bi->tree, str, add, update);
 			}
 			fclose(fp);
 

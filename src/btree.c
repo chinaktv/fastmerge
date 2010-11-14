@@ -7,31 +7,45 @@
 #include  "store.h"
 #include  "info.h"
 
-#define ISNULL -1
-
 #define REC_DEPTH 0
+
+#define ALLOC_NUM 1024
 
 struct btree *btree_new_memory(struct store *store, int (*compare)(const void*, const void*), int (*insert_eq)(void*, void*))
 {
+	int i;
 	struct btree * tree = (struct btree *) malloc(sizeof(struct btree));
 	memset(tree, 0, sizeof(struct btree));
 
-	tree->oStore    = store;
-	tree->nStore    = store_open_memory(sizeof(struct btree_node), 1024);
-	tree->compare   = compare;
-	tree->insert_eq = insert_eq;
+	tree->store       = store;
+	tree->compare     = compare;
+	tree->insert_eq   = insert_eq;
+	tree->root        = NULL;
 
-	tree->root = ISNULL;
+	tree->array_count = 1;
+	tree->alloc_id    = 0;
+	tree->node_array  = (struct btree_node **)calloc(tree->array_count, sizeof(struct btree_node*));
+	for (i = 0; i< 1; i++)
+		tree->node_array[i] = (struct btree_node *)calloc(ALLOC_NUM, sizeof(struct btree_node));
 
 	return tree;
 }
 
-static struct btree_node *node_new(struct btree *tree, off_t new_idx, off_t data, const char *key)
+static struct btree_node *node_new(struct btree *tree, void *data, const char *key)
 {
-	struct btree_node * p_node = store_read(tree->nStore, new_idx);
-	p_node->left = ISNULL;
-	p_node->right = ISNULL;
-	p_node->data = data;
+	struct btree_node * p_node;
+
+	if (tree->alloc_id == ALLOC_NUM) {
+		tree->node_array = (struct btree_node **)realloc(tree->node_array, (tree->array_count + 1) * sizeof(struct btree_node*));
+		tree->node_array[tree->array_count] = (struct btree_node *)calloc(ALLOC_NUM, sizeof(struct btree_node));
+		tree->array_count ++;
+		tree->alloc_id = 0;
+	}
+	p_node = tree->node_array[tree->array_count - 1] + tree->alloc_id;
+	tree->alloc_id++;
+
+	p_node->left = p_node->right = p_node->parent = NULL;
+	p_node->data = store_new_write(tree->store, data);;
 
 	if (key)
 		strncpy(p_node->key, key, 20);
@@ -41,67 +55,51 @@ static struct btree_node *node_new(struct btree *tree, off_t new_idx, off_t data
 	return p_node;
 }
 
-static void bintree_insert(struct btree * tree, void *data, const char *key)
+void btree_insert(struct btree * tree, void *data, const char *key, int *add, int *update)
 {
-	struct btree_node * thiz;
+	struct btree_node *thiz = tree->root;
 
-	off_t thiz_idx = tree->root;
-	off_t *next_read;
+	if (thiz == NULL) {
+		tree->root = node_new(tree, data, key);
+		tree->entries_num++;
 
-	thiz = store_read(tree->nStore, thiz_idx);
-
+		return;
+	}
 	while  ( thiz != NULL ) {
 		int cmp = strcmp(key, thiz->key);
-		if (cmp > 0) {
-			next_read = &thiz->right;
-		}
-		else if (cmp < 0){
-			next_read = &thiz->left;
-		}
-		else  {
+
+		if (cmp == 0) {
 			if (tree->insert_eq) {
-				void * pptr_data_ptr = store_read(tree->oStore, thiz->data);
-				if (tree->insert_eq(pptr_data_ptr, data) == 0)
-					store_write(tree->oStore, thiz->data, pptr_data_ptr);
-				store_release(tree->oStore, thiz->data, pptr_data_ptr);
+				void * pptr_data_ptr = store_read(tree->store, thiz->data);
+				if (tree->insert_eq(pptr_data_ptr, data) == 0) {
+					store_write(tree->store, thiz->data, pptr_data_ptr);
+					(*update)++;
+				}
+				store_release(tree->store, thiz->data, pptr_data_ptr);
 			}
 			break;
 		}
-		if (*next_read == ISNULL) {
-			struct btree_node * new;
-			off_t data_idx = store_new_write(tree->oStore, data);
-			off_t new_idx = store_new(tree->nStore);
+		if (cmp < 0) {
+			if (thiz->left != NULL)
+				thiz = thiz->left;
+			else {
+				thiz->left = node_new(tree, data, key);
+				(*add)++;
 
-			new = node_new(tree, new_idx, data_idx, key);
-			store_write(tree->nStore, new_idx, new);
-			store_release(tree->nStore, new_idx, new);
-
-			*next_read = new_idx;
-			store_write(tree->nStore, thiz_idx, thiz);
+				break;
+			}
 		}
-		store_release(tree->nStore, thiz_idx, thiz);
+		else {
+			if (thiz->right != NULL)
+				thiz = thiz->right;
+			else {
+				thiz->right = node_new(tree, data, key);
+				(*add)++;
 
-		thiz = store_read(tree->nStore, *next_read);
-		thiz_idx = *next_read;
+				break;
+			}
+		}
 	}
-}
-
-void btree_insert(struct btree * tree, void *data, const char *key)
-{
-	if(tree->root == ISNULL) {
-		struct btree_node * node;
-		off_t node_idx = store_new(tree->nStore);
-		off_t data_idx = store_new_write(tree->oStore, data);
-
-		node = node_new(tree, node_idx, data_idx, key);
-		store_write(tree->nStore, node_idx, node);
-		store_release(tree->nStore, node_idx, node);
-
-		tree->root = node_idx;
-
-	} else
-		bintree_insert( tree, data, key);
-
 	tree->entries_num++;
 }
 
@@ -111,26 +109,22 @@ static int bintree_find(struct btree * tree, struct btree_node * node, const cha
 	int cmp = strncmp(key, node->key, sizeof(node->key));
 
 	if (cmp < 0) {
-		if(node->left == ISNULL) {
+		if(node->left == NULL) {
 			ret = 0;
 		} else {
-			struct btree_node * left = store_read(tree->nStore, node->left);
-			if (depth)
-				*depth += 1;
+			struct btree_node * left = node->left;
+			*depth += 1;
 			ret = bintree_find (tree, left, key, depth);
-			store_release(tree->nStore, node->left, left);
 		}
 	} 
 	else if (cmp > 0){
-		if(node->right == ISNULL) {
+		if(node->right == NULL) {
 			ret = 0; 
 		} else {
-			struct btree_node * right = store_read(tree->nStore, node->right);
+			struct btree_node * right = node->right;
 
-			if (depth)
-				*depth += 1;
+			*depth += 1;
 			ret = bintree_find (tree, right, key, depth);
-			store_release(tree->nStore, node->right, right);
 		}
 	}
 
@@ -143,9 +137,8 @@ int btree_find(struct btree *tree, const char *key)
 #if REC_DEPTH
 	static int max_depth = 0;
 #endif
-	struct btree_node * root = store_read(tree->nStore, tree->root);
+	struct btree_node * root = tree->root;
 	ret = bintree_find(tree, root, key, &depth);
-	store_release(tree->nStore, tree->root, root);
 
 #if REC_DEPTH
 	if (max_depth < depth) {
@@ -158,16 +151,11 @@ int btree_find(struct btree *tree, const char *key)
 
 void btree_close( struct btree * tree )
 {
-	struct btree_node * root = store_read(tree->nStore, 0);
+	int i;
 
-	root->data = tree->root;
-	root->left = tree->entries_num;
-
-	store_write  (tree->nStore, 0, root);
-	store_release(tree->nStore, 0, root);
-
-	store_close(tree->nStore);
-
+	for (i = 0; i < tree->array_count; i++) 
+		free(tree->node_array[i]); 
+	free(tree->node_array);
 	free(tree);
 }
 
@@ -176,31 +164,51 @@ static void print_subtree(struct btree * tree, struct btree_node * node, void (*
 	if  ( node == NULL )
 		return;
 
-	if(node->left != ISNULL) {
-		struct btree_node * left = store_read(tree->nStore, node->left);
-
-		print_subtree(tree, left, print, userdata);
-		store_release(tree->nStore, node->left, left);
-	}
+	if(node->left != NULL)
+		print_subtree(tree, node->left, print, userdata);
 	if (print)
-		print(userdata, store_read(tree->oStore, node->data));
+		print(userdata, store_read(tree->store, node->data));
 
-	if(node->right != ISNULL) {
-		struct btree_node * right = store_read(tree->nStore, node->right);
-
-		print_subtree(tree, right, print, userdata);
-		store_release(tree->nStore, node->right, right);
-	}
+	if(node->right != NULL)
+		print_subtree(tree, node->right, print, userdata);
 }
 
 void btree_print(struct btree * tree, void (*print)(void *, void*), void *userdata)
 {
-	struct btree_node *node;
-	if  ( tree->root == ISNULL ) 
-		return;
+	print_subtree(tree, tree->root, print, userdata);
+}
 
-	node = store_read(tree->nStore, tree->root);
-	print_subtree(tree, node, print, userdata);
-	store_release(tree->nStore, tree->root, node);
+int bintree_depth(struct btree *tree, struct btree_node *node)
+{
+	if ( node == NULL)
+		return 0;
+	else {
+		int ld = bintree_depth(tree, node->left);
+		int rd = bintree_depth(tree, node->right);
+
+		return 1 + (ld >rd ? ld : rd);
+	}
+}
+
+int bintree_isbalance(struct btree *tree, struct btree_node *node)
+{
+	int dis, ret = 0;
+
+	if (node == NULL) 
+		return 0;
+
+	dis = bintree_depth(tree, node->left) - bintree_depth(tree, node->right);
+
+	if (dis > 1 || dis <- 1 )
+		ret = 1;
+	else
+		ret = bintree_isbalance(tree, node->left) && bintree_isbalance(tree, node->right);
+
+	return ret;
+}
+
+int btree_isbalance(struct btree *tree)
+{
+	return bintree_isbalance(tree, tree->root) == 0;
 }
 
