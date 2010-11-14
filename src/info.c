@@ -244,10 +244,10 @@ inline int FAST_HASH(const char *P)
 	u_int8_t *__cp, *__hp;
 	__hp = (u_int8_t *)&__h;
 	__cp = (u_int8_t *)(P);
-	__hp[0] = __cp[0] ^ __cp[4];
-	__hp[1] = __cp[1] ^ __cp[5];
-	__hp[2] = __cp[2] ^ __cp[6];
-	__hp[3] = __cp[3] ^ __cp[7];
+	__hp[3] = __cp[0] ^ __cp[4];
+	__hp[2] = __cp[1] ^ __cp[5];
+	__hp[1] = __cp[2] ^ __cp[6];
+	__hp[0] = __cp[3] ^ __cp[7];
 
 	return __h;                   
 }
