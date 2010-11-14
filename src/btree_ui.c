@@ -95,10 +95,10 @@ static int btree_ui_find(struct btree_info *ui, const char *key)
 }
 
 ui btree_ui = {
-	.init    = (void *(*)(void))              btree_ui_create,
-	.addfile = (int (*)(void*, const char *)) btree_ui_addfile,
-	.out     = (void (*)(void*, const char *))btree_ui_out,
-	.free    = (void (*)(void *))             btree_ui_free,
-	.find    = (int (*)(void *, const char*)) btree_ui_find,
+	.init    = (void *(*)(void))                            btree_ui_create,
+	.addfile = (int (*)(void*, const char *, int *, int *)) btree_ui_addfile,
+	.out     = (void (*)(void*, const char *))              btree_ui_out,
+	.free    = (void (*)(void *))                           btree_ui_free,
+	.find    = (int (*)(void *, const char*))               btree_ui_find,
 };
 

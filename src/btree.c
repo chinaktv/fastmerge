@@ -9,7 +9,7 @@
 
 #define REC_DEPTH 0
 
-#define ALLOC_NUM 1024
+#define ALLOC_NUM 32
 
 struct btree *btree_new_memory(struct store *store, int (*compare)(const void*, const void*), int (*insert_eq)(void*, void*))
 {
@@ -36,7 +36,14 @@ static struct btree_node *node_new(struct btree *tree, void *data, const char *k
 	struct btree_node * p_node;
 
 	if (tree->alloc_id == ALLOC_NUM) {
+#if 0
+		struct btree_node *tmp = tree->node_array[tree->array_count];
+		tree->node_array = (struct btree_node **)calloc(tree->array_count + 1, sizeof(struct btree_node*));
+
+		memcpy(tree->node_array, tmp, sizeof(struct btree_node *) * tree->array_count);
+#else
 		tree->node_array = (struct btree_node **)realloc(tree->node_array, (tree->array_count + 1) * sizeof(struct btree_node*));
+#endif
 		tree->node_array[tree->array_count] = (struct btree_node *)calloc(ALLOC_NUM, sizeof(struct btree_node));
 		tree->array_count ++;
 		tree->alloc_id = 0;

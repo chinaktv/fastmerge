@@ -102,7 +102,12 @@ static void *ds_readBlock(const struct fileStore * fs, off_t blockNumber)
 	void * retVal;
 	LSEEK((fs->data_file, blockNumber * fs->blockSize, SEEK_SET));
 	retVal = malloc(fs->blockSize /* * sizeof(char)*/);
-	read(fs->data_file, retVal, fs->blockSize);
+	if (read(fs->data_file, retVal, fs->blockSize) < 0) {
+		free(retVal);
+		retVal = NULL;
+	}
+
+
 	return retVal;
 } 
 

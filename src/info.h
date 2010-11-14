@@ -22,7 +22,7 @@
 #include <time.h>
 
 #define STR_KEY 1
-#define PARSE_INFO 1
+#define PARSE_INFO 0
 
 typedef union {
 	struct {

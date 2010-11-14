@@ -16,14 +16,14 @@ OBJS=$(addprefix objects/, $(addsuffix .o, $(basename $(notdir $(SRC)))))
 LIB=libbtree.a
 
 ##############################################################################
-ENABLE_MEMWATCH=yes
+ENABLE_MEMWATCH=no
 
 ifeq ($(ENABLE_MEMWATCH), yes)
     CPPFLAGS += -DMEMWATCH
     SRC += memwatch.c
 endif
 
-CFLAGS += -D_GNU_SOURCE=1 -D_REENTRANT -g -I./include -I$(THIRDPARTY)/include
+CFLAGS+=-D_GNU_SOURCE=1 -D_REENTRANT -g -I./include -I$(THIRDPARTY)/include
 
 
 ##############################################################################

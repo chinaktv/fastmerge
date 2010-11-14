@@ -17,7 +17,7 @@ int main(int argc, char **argv)
 	char *outfile = NULL;
 	int add, update;
 
-	ui *userinfo;
+	ui *userinfo = NULL;
 	
 	if (argc < 4) {
 		printf("%s <user_info.csv> <1/2> <path> [out.csv]\n", argv[0]);
@@ -62,6 +62,7 @@ int main(int argc, char **argv)
 
 	if (dirp) {
 		char filename[256];
+
 		direp = readdir(dirp);
 		for (; direp != NULL; direp = readdir(dirp)) {
 			if (!strcmp(direp->d_name, ".") || !strcmp(direp->d_name, ".."))

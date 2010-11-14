@@ -138,7 +138,7 @@ int userinfo_update(struct user_info *old, struct user_info *_new)
 	return -1;
 
 update:
-#if 1
+#if 0
 #if PARSE_INFO
 	printf("%s(%s) -> %s(%s)\n", _new->card, _new->name, old->card, old->name);
 #else	

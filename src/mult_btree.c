@@ -9,27 +9,43 @@
 
 #define REC_DEPTH 0
 
+#define ALLOC_NUM 1024
+
 struct btree *btree_new_memory(struct store *store, int (*compare)(const void*, const void*), int (*insert_eq)(void*, void*))
 {
+	int i;
 	struct btree * tree = (struct btree *) malloc(sizeof(struct btree));
 	memset(tree, 0, sizeof(struct btree));
 
-	tree->oStore    = store;
-	tree->nStore    = store_open_memory(sizeof(struct btree_node), 1024);
-	tree->compare   = compare;
-	tree->insert_eq = insert_eq;
+	tree->store       = store;
+	tree->compare     = compare;
+	tree->insert_eq   = insert_eq;
+	tree->root        = NULL;
 
-	tree->root = NULL;
+	tree->array_count = 1;
+	tree->alloc_id    = 0;
+	tree->node_array  = (struct btree_node **)calloc(tree->array_count, sizeof(struct btree_node*));
+	for (i = 0; i< 1; i++)
+		tree->node_array[i] = (struct btree_node *)calloc(ALLOC_NUM, sizeof(struct btree_node));
 
 	return tree;
 }
 
 static struct btree_node *node_new(struct btree *tree, void *data, const char *key)
 {
-	struct btree_node * p_node = (struct btree_node *)calloc(1, sizeof(struct btree_node));
+	struct btree_node * p_node;
+
+	if (tree->alloc_id == ALLOC_NUM) {
+		tree->node_array = (struct btree_node **)realloc(tree->node_array, (tree->array_count + 1) * sizeof(struct btree_node*));
+		tree->node_array[tree->array_count] = (struct btree_node *)calloc(ALLOC_NUM, sizeof(struct btree_node));
+		tree->array_count ++;
+		tree->alloc_id = 0;
+	}
+	p_node = tree->node_array[tree->array_count - 1] + tree->alloc_id;
+	tree->alloc_id++;
 
 	p_node->left = p_node->right = p_node->parent = NULL;
-	p_node->data = store_new_write(tree->oStore, data);;
+	p_node->data = store_new_write(tree->store, data);;
 
 	if (key)
 		strncpy(p_node->key, key, 20);
@@ -39,7 +55,7 @@ static struct btree_node *node_new(struct btree *tree, void *data, const char *k
 	return p_node;
 }
 
-void btree_insert(struct btree * tree, void *data, const char *key)
+void btree_insert(struct btree * tree, void *data, const char *key, int *add, int *update)
 {
 	struct btree_node *thiz = tree->root;
 
@@ -54,10 +70,12 @@ void btree_insert(struct btree * tree, void *data, const char *key)
 
 		if (cmp == 0) {
 			if (tree->insert_eq) {
-				void * pptr_data_ptr = store_read(tree->oStore, thiz->data);
-				if (tree->insert_eq(pptr_data_ptr, data) == 0)
-					store_write(tree->oStore, thiz->data, pptr_data_ptr);
-				store_release(tree->oStore, thiz->data, pptr_data_ptr);
+				void * pptr_data_ptr = store_read(tree->store, thiz->data);
+				if (tree->insert_eq(pptr_data_ptr, data) == 0) {
+					store_write(tree->store, thiz->data, pptr_data_ptr);
+					(*update)++;
+				}
+				store_release(tree->store, thiz->data, pptr_data_ptr);
 			}
 			break;
 		}
@@ -66,6 +84,7 @@ void btree_insert(struct btree * tree, void *data, const char *key)
 				thiz = thiz->left;
 			else {
 				thiz->left = node_new(tree, data, key);
+				(*add)++;
 
 				break;
 			}
@@ -75,6 +94,7 @@ void btree_insert(struct btree * tree, void *data, const char *key)
 				thiz = thiz->right;
 			else {
 				thiz->right = node_new(tree, data, key);
+				(*add)++;
 
 				break;
 			}
@@ -93,8 +113,7 @@ static int bintree_find(struct btree * tree, struct btree_node * node, const cha
 			ret = 0;
 		} else {
 			struct btree_node * left = node->left;
-			if (depth)
-				*depth += 1;
+			*depth += 1;
 			ret = bintree_find (tree, left, key, depth);
 		}
 	} 
@@ -104,8 +123,7 @@ static int bintree_find(struct btree * tree, struct btree_node * node, const cha
 		} else {
 			struct btree_node * right = node->right;
 
-			if (depth)
-				*depth += 1;
+			*depth += 1;
 			ret = bintree_find (tree, right, key, depth);
 		}
 	}
@@ -133,8 +151,11 @@ int btree_find(struct btree *tree, const char *key)
 
 void btree_close( struct btree * tree )
 {
-//	store_close(tree->nStore);
+	int i;
 
+	for (i = 0; i < tree->array_count; i++) 
+		free(tree->node_array[i]); 
+	free(tree->node_array);
 	free(tree);
 }
 
@@ -146,7 +167,7 @@ static void print_subtree(struct btree * tree, struct btree_node * node, void (*
 	if(node->left != NULL)
 		print_subtree(tree, node->left, print, userdata);
 	if (print)
-		print(userdata, store_read(tree->oStore, node->data));
+		print(userdata, store_read(tree->store, node->data));
 
 	if(node->right != NULL)
 		print_subtree(tree, node->right, print, userdata);
