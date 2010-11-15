@@ -25,7 +25,7 @@ struct btree *btree_new_memory(struct store *store, int (*compare)(const void*, 
 	tree->array_count = 1;
 	tree->alloc_id    = 0;
 	tree->node_array  = (struct btree_node **)calloc(tree->array_count, sizeof(struct btree_node*));
-	for (i = 0; i< 1; i++)
+	for (i = 0; i< tree->array_count; i++)
 		tree->node_array[i] = (struct btree_node *)calloc(ALLOC_NUM, sizeof(struct btree_node));
 
 	return tree;
@@ -36,8 +36,8 @@ static struct btree_node *node_new(struct btree *tree, void *data, const char *k
 	struct btree_node * p_node;
 
 	if (tree->alloc_id == ALLOC_NUM) {
-#if 0
-		struct btree_node *tmp = tree->node_array[tree->array_count];
+#if 1
+		struct btree_node *tmp = tree->node_array;
 		tree->node_array = (struct btree_node **)calloc(tree->array_count + 1, sizeof(struct btree_node*));
 
 		memcpy(tree->node_array, tmp, sizeof(struct btree_node *) * tree->array_count);

@@ -31,11 +31,16 @@ static int userinfo_insert(struct btree *tree, char *info_str, int *add, int *up
 {
 	struct user_info new_data;
 	char key[20] = {0, }, *p;
+	int len;
 
 	if (tree == NULL || info_str == NULL)
 		return -1;
 
 	p = strchr(info_str, ',');
+
+	len  =p - info_str;
+	if (len > 18)
+		len = 18;
 
 	memcpy(key, info_str, p - info_str);
 
