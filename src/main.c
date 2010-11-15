@@ -53,7 +53,7 @@ int main(int argc, char **argv)
 	}
 #endif
 
-#if 0
+#if 1
 	dirp = opendir(argv[3]);
 
 	if (dirp) {
@@ -71,7 +71,7 @@ int main(int argc, char **argv)
 	}
 #endif
 	ui_end(userinfo);
-//	ui_out(userinfo, outfile);
+	ui_out(userinfo, outfile);
 	ui_free(userinfo);
 
 	return  0;
