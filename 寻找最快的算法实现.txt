@@ -1,44 +1,44 @@
-һ�����⣺
+一、命题：
 
-1. ��һcsv��ʽ���û���Ϣ�ļ�:user_info.csv
+1. 有一csv格式的用户信息文件:user_info.csv
 
-�������û�����Ϣ���ֶ�Ϊ��ID,name,sex,email,phone,update��
-id: Ϊ����֤��, name: �û�������, sex:�Ա�, email���û��������ַ, update:Ϊ�û���Ϣ�����¸���ʱ�䣻
+保存着用户的信息，字段为：ID,name,sex,email,phone,update。
+id: 为身份证号, name: 用户的姓名, sex:性别, email：用户的邮箱地址, update:为用户信息的最新更新时间；
 
 user_info.csv:
-422302199012250448,����,��,zhangsa@nationalchip.com,13800138000,2010-11-20 20:20:11
-422303199012250448,����,Ů,zhangsa@nationalchip.com,13800138000,2010-11-20 20:20:11
+422302199012250448,张三,男,zhangsa@nationalchip.com,13800138000,2010-11-20 20:20:11
+422303199012250448,李四,女,zhangsa@nationalchip.com,13800138000,2010-11-20 20:20:11
 
-2. Ӳ�̵�ĳ��Ŀ¼�£�����һ����Ҫ���»��������ӵ��û��� ���ļ������ڸ�Ŀ¼�£�ÿ���ļ�����ܴ���һ���û���Ϣ�����߶����û���Ϣ����ŵĸ�ʽͬ����:
+2. 硬盘的某个目录下，存在一批需要更新或者新增加的用户， 以文件存着在该目录下，每个文件里可能存着一条用户信息，或者多条用户信息，存放的格式同上如:
 
 1.csv:
-422302199012250448,����,��,zhangsa1@nationalchip.com,13800138000,2010-11-20 20:20:11
-422302199012250447,����,��,zhangsa2@nationalchip.com,13800138000,2010-11-20 20:20:11
-422302199012250446,����,��,zhangsa3@nationalchip.com,13800138000,2010-11-20 20:20:11
-422302199012250447,����,��,zhangsa4@nationalchip.com,13800138000,2010-11-20 20:20:11
+422302199012250448,张三,男,zhangsa1@nationalchip.com,13800138000,2010-11-20 20:20:11
+422302199012250447,张四,男,zhangsa2@nationalchip.com,13800138000,2010-11-20 20:20:11
+422302199012250446,张五,男,zhangsa3@nationalchip.com,13800138000,2010-11-20 20:20:11
+422302199012250447,张六,男,zhangsa4@nationalchip.com,13800138000,2010-11-20 20:20:11
 
 2.csv
-422302199012250446,С��,Ů,zhangsa4@nationalchip.com,13800138000,2010-11-20 20:20:11
+422302199012250446,小王,女,zhangsa4@nationalchip.com,13800138000,2010-11-20 20:20:11
 
 3.csv
-422302199012250448,����,��,zhangsa@nationalchip.com,13800138000,2010-11-20 20:20:11
+422302199012250448,张三,男,zhangsa@nationalchip.com,13800138000,2010-11-20 20:20:11
 
-3. ����csv����Ϣ��������˳�����У�
+3. 各个csv中信息不保存是顺序排列；
 
-��������
-	1. ���user_info.csv�в���Ŀ¼�¸���csv�ļ��е����û�������뵽user_info.csv�У�
-	2. ���Ŀ¼�µ��û�����ʱ���user_info.csv���û�ʱ���£������user_info.csv�е��û���Ϣ��
+二、任务：
+	1. 如果user_info.csv中不存目录下各个csv文件中的新用户，则加入到user_info.csv中；
+	2. 如果目录下的用户更新时间比user_info.csv中用户时间新，则更新user_info.csv中的用户信息；
 
-����������
-	1. ����Ӳ��: lenovo X200, CPU: Intel Core2 Du CPU 2.40GHz, 2G MEM��
-	2. ��������: Ubuntu 10.10��
-	3. Ҫ��ʹ�ñ�׼C������C++��������ʹ�õ������⡣����ʹ������һ���ֶΣ�����google,������ѡ�
-	4. �Ա����Ķ�����ִ�г���
-	5. ���ʱ��Ϊһ�ܣ����ܶ���ѵʱ����е�һ�ֱ�����
-	6. ����SAT ��Ա������μӣ�
+三、条件：
+	1. 运行硬件: lenovo X200, CPU: Intel Core2 Du CPU 2.40GHz, 2G MEM；
+	2. 运行软件: Ubuntu 10.10；
+	3. 要求使用标准C，或者C++，不允许使用第三方库。可以使用其他一切手段，包括google,亲朋好友。
+	4. 以编译后的二进制执行程序。
+	5. 设计时间为一周，下周二培训时间进行第一轮比赛；
+	6. 所有SAT 成员都必须参加；
 
-�ġ������
-	�ҳ�����ʵ���㷨��
+四、结果：
+	找出最快的实现算法。
 
 
 
