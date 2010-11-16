@@ -25,7 +25,8 @@ static struct btree_info *btree_ui_create(void)
 
 	bi->userinfo_store = store_open_memory(sizeof(struct user_info), 1024);
 //	bi->userinfo_store = store_open_disk("/tmp/temp", sizeof(struct user_info), 1024);
-	bi->tree = btree_new_memory(bi->userinfo_store, (int(*)(const void *, const void *))userinfo_compare, (int (*)(void*, void*))userinfo_update);
+	bi->tree = btree_new_memory(bi->userinfo_store, (int(*)(const void *, const void *))userinfo_compare, \
+			(int (*)(void*, void*))userinfo_update);
 
 	return bi;
 }

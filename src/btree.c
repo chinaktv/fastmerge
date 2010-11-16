@@ -10,11 +10,8 @@
 
 #define REC_DEPTH 0
 
-#define ALLOC_NUM 32
-
 struct btree *btree_new_memory(struct store *store, int (*compare)(const void*, const void*), int (*insert_eq)(void*, void*))
 {
-	int i;
 	struct btree * tree;
 
 	tree = (struct btree *) malloc(sizeof(struct btree));
@@ -27,14 +24,11 @@ struct btree *btree_new_memory(struct store *store, int (*compare)(const void*, 
 	tree->insert_eq   = insert_eq;
 	tree->root        = NULL;
 
-	tree->array_count = 1;
-	tree->alloc_id    = 0;
-	tree->node_array  = (struct btree_node **)calloc(tree->array_count, sizeof(struct btree_node*));
-	assert(tree->node_array);
-	for (i = 0; i< tree->array_count; i++) {
-		tree->node_array[i] = (struct btree_node *)calloc(ALLOC_NUM, sizeof(struct btree_node));
-		assert(tree->node_array[i]);
-	}
+	INIT_LIST_HEAD(&tree->node_head);
+	tree->node_pool = (struct btree_node_head *)calloc(1, sizeof(struct btree_node_head));
+
+	tree->node_pool->used_id = 0;
+	list_add(&tree->node_pool->head, &tree->node_head);
 
 	return tree;
 }
@@ -43,24 +37,13 @@ static struct btree_node *node_new(struct btree *tree, void *data, const char *k
 {
 	struct btree_node * p_node;
 
-	if (tree->alloc_id == ALLOC_NUM) {
-#if 1
-		struct btree_node *tmp = tree->node_array;
-		tree->node_array = (struct btree_node **)calloc(tree->array_count + 1, sizeof(struct btree_node*));
-		assert(tree->node_array);
-
-		memcpy(tree->node_array, tmp, sizeof(struct btree_node *) * tree->array_count);
-#else
-		tree->node_array = (struct btree_node **)realloc(tree->node_array, (tree->array_count + 1) * sizeof(struct btree_node*));
-#endif
-		tree->node_array[tree->array_count] = (struct btree_node *)calloc(ALLOC_NUM, sizeof(struct btree_node));
-		assert(tree->node_array[tree->array_count]);
-
-		tree->array_count ++;
-		tree->alloc_id = 0;
+	if (tree->node_pool->used_id >= ALLOC_NUM) {
+		tree->node_pool = (struct btree_node_head *) calloc(1, sizeof(struct btree_node_head));
+		tree->node_pool->used_id = 0;
+		list_add(&tree->node_pool->head, &tree->node_head);
 	}
-	p_node = tree->node_array[tree->array_count - 1] + tree->alloc_id;
-	tree->alloc_id++;
+
+	p_node = tree->node_pool->node + tree->node_pool->used_id++;
 
 	p_node->left = p_node->right = p_node->parent = NULL;
 	p_node->data = store_new_write(tree->store, data);;
@@ -83,6 +66,7 @@ void btree_insert(struct btree * tree, void *data, const char *key, int *add, in
 
 		return;
 	}
+
 	while  ( thiz != NULL ) {
 		int cmp = strcmp(key, thiz->key);
 
@@ -169,11 +153,16 @@ int btree_find(struct btree *tree, const char *key)
 
 void btree_close( struct btree * tree )
 {
-	int i;
+	struct list_head *pos, *n, *head;
 
-	for (i = 0; i < tree->array_count; i++) 
-		free(tree->node_array[i]); 
-	free(tree->node_array);
+
+	head = & tree->node_head;
+	list_for_each_safe(pos, n, head) {
+		struct btree_node_head *x = list_entry(pos, struct btree_node_head, head);
+		list_del(pos);
+		free(x);
+	}
+
 	free(tree);
 }
 

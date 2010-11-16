@@ -1,5 +1,5 @@
 #ifndef SYS_BULK_STORAGE_H
-#define SYS_BULK_STORAGE_H 1
+#define SYS_BULK_STORAGE_H 
 
 #include <sys/types.h>
 #include <sys/stat.h>

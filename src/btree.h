@@ -5,8 +5,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+
+#include "list.h"
 #include "memwatch.h"
 
+#define ALLOC_NUM 1024
 struct btree_node {
 	struct btree_node *left, *right, *parent;
 	off_t data;
@@ -14,11 +17,20 @@ struct btree_node {
 	char balance;
 };
 
+#if 1
+struct btree_node_head {
+	struct list_head head;
+
+	int used_id;
+	struct btree_node node[ALLOC_NUM];
+};
+#endif
+
 struct btree {
 	struct store * store;
-	struct btree_node **node_array;
-	int alloc_id;
-	int array_count;
+
+	struct list_head node_head;
+	struct btree_node_head *node_pool;
 
 	off_t entries_num;
 	struct btree_node *root;

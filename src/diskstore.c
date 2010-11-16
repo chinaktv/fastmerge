@@ -66,7 +66,7 @@ static struct fileStore *ds_open(const char *filename, size_t blockSize, off_t b
 	struct fileStore* fs = (struct fileStore*) malloc(sizeof(struct fileStore));
 
 	assert(fs);
-	/*  fs->data_file = open(filename, O_RDWR|O_CREAT|O_LARGEFILE, S_IRWXU); */
+
 	fs->data_file = open64(filename, O_RDWR|O_CREAT, S_IRWXU);
 	fs->used_index = NULL;
 
@@ -77,7 +77,7 @@ static struct fileStore *ds_open(const char *filename, size_t blockSize, off_t b
 	if(blockCount < 8) {
 		blockCount = 8;
 	}
-	blockCount = (blockCount / 8) * 8;  /* Round blockCount down to the nearest multiple of 8. */
+	blockCount = (blockCount / 8) * 8;
 
 	fs->blockSize = blockSize;
 	fs->newLastBlock = 0;
@@ -101,7 +101,7 @@ static void *ds_readBlock(const struct fileStore * fs, off_t blockNumber)
 {
 	void * retVal;
 	LSEEK((fs->data_file, blockNumber * fs->blockSize, SEEK_SET));
-	retVal = malloc(fs->blockSize /* * sizeof(char)*/);
+	retVal = malloc(fs->blockSize);
 	assert(retVal);
 
 	if (read(fs->data_file, retVal, fs->blockSize) < 0) {
@@ -125,7 +125,6 @@ static void ds_writeBlock(struct fileStore * fs, off_t blockNumber, void * value
 
 static off_t ds_newBlock(struct fileStore * fs) 
 {
-	/* 8 blocks per byte. */
 	off_t current_block = fs->newLastBlock; 
 	off_t initial_block = fs->newLastBlock; 
 	off_t newBlock = -1;
@@ -136,8 +135,6 @@ static off_t ds_newBlock(struct fileStore * fs)
 		fs->newLastBlock = newBlock+1;
 		return newBlock;
 	}
-
-	/* seek to beginning of file to reclaim freed space. */
 
 	if(fs->calledFree) {
 		fs->calledFree = 0;
@@ -150,11 +147,6 @@ static off_t ds_newBlock(struct fileStore * fs)
 			return newBlock;
 		}
 	}
-
-	/* Nothing before the counter, so the file is 100% utilized. */
-
-	/* Grow file by doubling its capacity. */
-
 	newBlock = fs->blockCount;
 	fs->newLastBlock = newBlock+1;
 #ifndef GROW_BLOCK_COUNT
@@ -194,7 +186,6 @@ static off_t ds_find_free_block(struct fileStore * fs, off_t startBlock, off_t s
 	int bitSet[8];
 	off_t start_offset, stop_offset;
 
-	/** Expand boundaries so they are multiples of 8. **/
 	startBlock = (startBlock / 8) * 8;
 	stopBlock = (1+((stopBlock-1) / 8)) * 8;
 
@@ -256,11 +247,12 @@ static unsigned char pack_bits(const int*  bitSet)
 {
 	int i;
 	unsigned char c = 0;
-	/*Need to traverse the bitSet backwards.*/
+	
 	for(i = 7; i >= 0; i--) {
 		c *= 2;
-		c += bitSet[i]; /* Each entry of bitSet must be 0 or 1...*/
+		c += bitSet[i];
 	}
+
 	return c;
 }
 

@@ -16,6 +16,9 @@
  * =====================================================================================
  */
 
+#ifndef __UI_H__
+#define __UI_H__
+
 typedef struct algorithm {
 	void *_private;
 	void* (*init)(void);
@@ -35,3 +38,6 @@ void ui_end    (ui *info);
 
 extern ui btree_ui;
 extern ui bthread_ui;
+
+#endif 
+

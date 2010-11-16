@@ -8,7 +8,6 @@
 
 #include "info.h"
 
-
 #define KEY (key[x++] - '0')
 static inline void str2time(struct tm *t, const char *key)
 {
@@ -45,7 +44,6 @@ static inline int str2userid(user_id *userid, const char *key)
 {
 	int x = 0, len;
 
-	// 422302 1978 0227 033 8
 	len = strlen(key);
 
 	if (len < 15  || len > 18)

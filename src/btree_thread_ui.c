@@ -15,7 +15,7 @@
 
 #define MAX_THREAD 4
 #define MAX_STR 128
-#define MAX_BUF 8
+#define MAX_BUF 1024
 
 struct bthread_info;
 

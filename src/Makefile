@@ -5,10 +5,10 @@ LD     = $(CROSS_COMPILE)-gcc
 AR     = $(CROSS_COMPILE)-ar
 RANLIB = $(CROSS_COMPILE)-ranlib
 
-INCS +=-Wundef -Wall -pipe -O0 -g
+INCS +=-Wundef -Wall -pipe -O2 -g
 CFLAGS += $(INCS) $(CPPFLAGS) 
 
-SRC += store.c btree.c diskstore.c memstore.c btree_ui.c main.c ui.c info.c btree_thread_ui.c
+SRC += store.c btree.c diskstore.c memstore.c btree_ui.c main.c ui.c info.c btree_thread_ui.c list.c
 
 OBJS=$(addprefix objects/, $(addsuffix .o, $(basename $(notdir $(SRC)))))
 
@@ -49,7 +49,7 @@ objects:
 $(LIB): objects $(OBJS)
 	$(AR) r $@ $(OBJS)
 	$(RANLIB) $@
-	gcc $(LIB) -o btree -g -O0 -lpthread
+	gcc $(LIB) -o btree -g -O2 -lpthread
 
 install: $(LIB)
 	install -d $(THIRDPARTY)/lib
