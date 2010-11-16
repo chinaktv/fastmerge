@@ -1,17 +1,22 @@
-#include  <stdio.h>
-#include  <stdlib.h>
-#include  <memory.h>
-#include  <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <memory.h>
+#include <stdarg.h>
+#include <assert.h>
 
-#include  "btree.h"
-#include  "store.h"
-#include  "info.h"
+#include "btree.h"
+#include "store.h"
+#include "info.h"
 
 #define REC_DEPTH 0
 
 struct btree *btree_new_memory(struct store *store, int (*compare)(const void*, const void*), int (*insert_eq)(void*, void*))
 {
-	struct btree * tree = (struct btree *) malloc(sizeof(struct btree));
+	struct btree * tree;
+	
+	tree = (struct btree *) malloc(sizeof(struct btree));
+	assert(tree);
+
 	memset(tree, 0, sizeof(struct btree));
 
 	tree->oStore    = store;
@@ -28,6 +33,7 @@ static struct btree_node *node_new(struct btree *tree, void *data, const char *k
 {
 	struct btree_node * p_node = (struct btree_node *)calloc(1, sizeof(struct btree_node));
 
+	assert(p_node);
 	p_node->left = p_node->right = p_node->parent = NULL;
 	p_node->data = store_new_write(tree->oStore, data);;
 

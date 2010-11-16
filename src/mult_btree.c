@@ -1,11 +1,12 @@
-#include  <stdio.h>
-#include  <stdlib.h>
-#include  <memory.h>
-#include  <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <memory.h>
+#include <stdarg.h>
+#include <assert.h>
 
-#include  "btree.h"
-#include  "store.h"
-#include  "info.h"
+#include "btree.h"
+#include "store.h"
+#include "info.h"
 
 #define REC_DEPTH 0
 
@@ -15,6 +16,8 @@ struct btree *btree_new_memory(struct store *store, int (*compare)(const void*, 
 {
 	int i;
 	struct btree * tree = (struct btree *) malloc(sizeof(struct btree));
+
+	assert(tree);
 	memset(tree, 0, sizeof(struct btree));
 
 	tree->store       = store;
@@ -25,8 +28,12 @@ struct btree *btree_new_memory(struct store *store, int (*compare)(const void*, 
 	tree->array_count = 1;
 	tree->alloc_id    = 0;
 	tree->node_array  = (struct btree_node **)calloc(tree->array_count, sizeof(struct btree_node*));
-	for (i = 0; i< 1; i++)
+	assert(tree->node_array);
+
+	for (i = 0; i< 1; i++) {
 		tree->node_array[i] = (struct btree_node *)calloc(ALLOC_NUM, sizeof(struct btree_node));
+		assert(tree->node_array[i]);
+	}
 
 	return tree;
 }
@@ -38,6 +45,8 @@ static struct btree_node *node_new(struct btree *tree, void *data, const char *k
 	if (tree->alloc_id == ALLOC_NUM) {
 		tree->node_array = (struct btree_node **)realloc(tree->node_array, (tree->array_count + 1) * sizeof(struct btree_node*));
 		tree->node_array[tree->array_count] = (struct btree_node *)calloc(ALLOC_NUM, sizeof(struct btree_node));
+		assert(tree->node_array[tree->array_count]);
+
 		tree->array_count ++;
 		tree->alloc_id = 0;
 	}

@@ -18,7 +18,10 @@ struct btree_info {
 
 static struct btree_info *btree_ui_create(void)
 {
-	struct btree_info *bi = (struct btree_info*)malloc(sizeof(struct btree_info));
+	struct btree_info *bi;
+	
+	bi = (struct btree_info*)malloc(sizeof(struct btree_info));
+	assert(bi);
 
 	bi->userinfo_store = store_open_memory(sizeof(struct user_info), 1024);
 //	bi->userinfo_store = store_open_disk("/tmp/temp", sizeof(struct user_info), 1024);

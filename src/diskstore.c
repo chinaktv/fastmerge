@@ -10,11 +10,8 @@
 			__LINE__, strerror(errno)); }
 #define METAPRINTF( fn, args, exp ) if( fn args exp ) ERR_MSG( fn )
 
-#define PRINTF(args)        METAPRINTF(printf, args, < 0)
 #define LSEEK(args)         METAPRINTF(lseek64, args, < 0)
 #define CLOSE(args)         METAPRINTF(close, args, < 0)
-#define READ_OR_DONT(args)  METAPRINTF(read, args, < 0)
-#define WRITE_OR_DONT(args) METAPRINTF(write, args, < 0)
 #define READ(args)          METAPRINTF(read, args, <= 0)
 #define WRITE(args)         METAPRINTF(write, args, <= 0)
 
@@ -55,6 +52,8 @@ const struct store_functions disk_functions = {
 struct store * store_open_disk(const char *filename, size_t blockSize, off_t blockCount) 
 {
 	struct store * store = malloc(sizeof(struct store));
+
+	assert(store);
 	memset(store, 0, sizeof(struct store));
 	store->functions = &disk_functions;
 	store->store_p = ds_open(filename, blockSize, blockCount);
@@ -66,6 +65,7 @@ static struct fileStore *ds_open(const char *filename, size_t blockSize, off_t b
 {
 	struct fileStore* fs = (struct fileStore*) malloc(sizeof(struct fileStore));
 
+	assert(fs);
 	/*  fs->data_file = open(filename, O_RDWR|O_CREAT|O_LARGEFILE, S_IRWXU); */
 	fs->data_file = open64(filename, O_RDWR|O_CREAT, S_IRWXU);
 	fs->used_index = NULL;
@@ -102,11 +102,12 @@ static void *ds_readBlock(const struct fileStore * fs, off_t blockNumber)
 	void * retVal;
 	LSEEK((fs->data_file, blockNumber * fs->blockSize, SEEK_SET));
 	retVal = malloc(fs->blockSize /* * sizeof(char)*/);
+	assert(retVal);
+
 	if (read(fs->data_file, retVal, fs->blockSize) < 0) {
 		free(retVal);
 		retVal = NULL;
 	}
-
 
 	return retVal;
 } 
@@ -228,8 +229,11 @@ static void ds_grow_files(struct fileStore * fs, off_t newCount)
 	assert(newCount > fs->blockCount);
 
 	fs->used_index = calloc(newCount, fs->blockSize);
-	fs->used_index = memcpy(fs->used_index, oldStore, fs->blockCount / 8 * sizeof(char));
+	assert(fs->used_index);
+	
+	memcpy(fs->used_index, oldStore, fs->blockCount / 8 * sizeof(char));
 	fs->blockCount = newCount;
+
 	free(oldStore);
 }
 

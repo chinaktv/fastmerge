@@ -36,16 +36,19 @@ struct mqueue *mq_create(int size, int full)
 	int i;
 
 	mq = (struct mqueue *)malloc(sizeof(struct mqueue));
+	assert(mq);
+
 	memset(mq, 0, sizeof(struct mqueue));
 	mq->count = size;
 	mq->node = (struct info_node **)calloc(size, sizeof(struct info_node *));
-
+	assert(mq->node);
 
 	mq->front = mq->rear = 0;
 
 	if (full) {
 		for (i = 0; i < size; i++) {
 			mq->node[i] = (struct info_node *)malloc(sizeof(struct info_node));
+			assert(mq->node[i]);
 		}
 		mq->rear = size - 1;
 		sem_init(&mq->get_sem, 0, size - 1);
@@ -181,6 +184,8 @@ static struct bthread_info *btree_thread_ui_create(void)
 {
 	int i;
 	struct bthread_info *bi = (struct bthread_info*)calloc(1, sizeof(struct bthread_info));
+
+	assert(bi);
 
 	bi->free_queue = mq_create(MAX_BUF, 1);
 

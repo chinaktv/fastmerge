@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <malloc.h>
+#include <assert.h>
 
 #include <stdio.h>
 #include "memwatch.h"
