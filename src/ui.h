@@ -36,7 +36,8 @@ void ui_out    (ui *info, const char *filename);
 int  ui_find   (ui *info, const char *key);
 void ui_end    (ui *info);
 
-extern ui btree_ui;
+extern ui sbtree_ui;
+extern ui avlbtree_ui;
 extern ui bthread_ui;
 
 #endif 

@@ -24,8 +24,10 @@ int main(int argc, char **argv)
 		return -1;
 	}
 
-	if (argv[1][0] == '1')
-		userinfo = &btree_ui;
+	if (argv[1][0] == '0')
+		userinfo = &sbtree_ui;
+	else if (argv[1][0] == '1')
+		userinfo = &avlbtree_ui;
 	else if (argv[1][0] == '2')
 		userinfo = &bthread_ui;
 

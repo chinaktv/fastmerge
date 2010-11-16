@@ -196,7 +196,7 @@ static struct bthread_info *btree_thread_ui_create(void)
 		bi->node[i].bi    = bi; 
 		bi->node[i].info_queue = mq_create(MAX_BUF, 0);
 		bi->node[i].store = store_open_memory(sizeof(struct user_info), 102400);
-		bi->node[i].tree  = btree_new_memory(bi->node[i].store, \
+		bi->node[i].tree  = sbtree_new_memory(bi->node[i].store, \
 						(int(*)(const void *, const void *))userinfo_compare, (int (*)(void*, void*))userinfo_update);
 
 		pthread_mutex_init(&bi->node[i].mutex, NULL);
@@ -301,7 +301,7 @@ static void btree_thread_ui_out(struct bthread_info *ui, const char *filename)
 	}
 
 	for (i = 0; i < MAX_THREAD; i++)
-		btree_print(ui->node[i].tree, (void (*)(void*, void*))userinfo_print, out);
+		btree_print(ui->node[i].tree, userinfo_print, out);
 
 	if (out != stdout)
 		fclose(out);

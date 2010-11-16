@@ -10,7 +10,13 @@
 
 #define REC_DEPTH 0
 
-struct btree *btree_new_memory(struct store *store, int (*compare)(const void*, const void*), int (*insert_eq)(void*, void*))
+static void sbtree_print    (struct btree * tree, void (*print)(void *, void*), void *userdata);
+static void sbtree_insert   (struct btree * tree, void *data, const char *key, int *add, int *update);
+static void sbtree_close    (struct btree * tree);
+static int  sbtree_find     (struct btree *tree, const char *key);
+static int  sbtree_isbalance(struct btree *tree);
+
+struct btree *sbtree_new_memory(struct store *store, int (*compare)(const void*, const void*), int (*insert_eq)(void*, void*))
 {
 	struct btree * tree;
 
@@ -23,12 +29,19 @@ struct btree *btree_new_memory(struct store *store, int (*compare)(const void*, 
 	tree->compare     = compare;
 	tree->insert_eq   = insert_eq;
 	tree->root        = NULL;
+	tree->entries_num = 0;
 
 	INIT_LIST_HEAD(&tree->node_head);
 	tree->node_pool = (struct btree_node_head *)calloc(1, sizeof(struct btree_node_head));
 
 	tree->node_pool->used_id = 0;
 	list_add(&tree->node_pool->head, &tree->node_head);
+
+	tree->close     = sbtree_close;
+	tree->insert    = sbtree_insert;
+	tree->show      = sbtree_print;
+	tree->find      = sbtree_find;
+	tree->isbalance = sbtree_isbalance;
 
 	return tree;
 }
@@ -46,7 +59,7 @@ static struct btree_node *node_new(struct btree *tree, void *data, const char *k
 	p_node = tree->node_pool->node + tree->node_pool->used_id++;
 
 	p_node->left = p_node->right = p_node->parent = NULL;
-	p_node->data = store_new_write(tree->store, data);;
+	p_node->data = store_new_write(tree->store, data);
 
 	if (key)
 		strncpy(p_node->key, key, 20);
@@ -56,13 +69,12 @@ static struct btree_node *node_new(struct btree *tree, void *data, const char *k
 	return p_node;
 }
 
-void btree_insert(struct btree * tree, void *data, const char *key, int *add, int *update)
+static void sbtree_insert(struct btree * tree, void *data, const char *key, int *add, int *update)
 {
 	struct btree_node *thiz = tree->root;
 
 	if (thiz == NULL) {
 		tree->root = node_new(tree, data, key);
-		tree->entries_num++;
 
 		return;
 	}
@@ -79,7 +91,7 @@ void btree_insert(struct btree * tree, void *data, const char *key, int *add, in
 				}
 				store_release(tree->store, thiz->data, pptr_data_ptr);
 			}
-			break;
+			return;
 		}
 		if (cmp < 0) {
 			if (thiz->left != NULL)
@@ -102,7 +114,6 @@ void btree_insert(struct btree * tree, void *data, const char *key, int *add, in
 			}
 		}
 	}
-	tree->entries_num++;
 }
 
 static int bintree_find(struct btree * tree, struct btree_node * node, const char *key, int *depth)
@@ -133,7 +144,7 @@ static int bintree_find(struct btree * tree, struct btree_node * node, const cha
 	return ret; 
 }
 
-int btree_find(struct btree *tree, const char *key) 
+int sbtree_find(struct btree *tree, const char *key) 
 { 
 	int ret, depth = 0;
 #if REC_DEPTH
@@ -151,7 +162,7 @@ int btree_find(struct btree *tree, const char *key)
 	return ret;
 }
 
-void btree_close( struct btree * tree )
+static void sbtree_close(struct btree * tree)
 {
 	struct list_head *pos, *n, *head;
 
@@ -180,12 +191,12 @@ static void print_subtree(struct btree * tree, struct btree_node * node, void (*
 		print_subtree(tree, node->right, print, userdata);
 }
 
-void btree_print(struct btree * tree, void (*print)(void *, void*), void *userdata)
+static void sbtree_print(struct btree * tree, void (*print)(void *, void*), void *userdata)
 {
 	print_subtree(tree, tree->root, print, userdata);
 }
 
-int bintree_depth(struct btree *tree, struct btree_node *node)
+static int bintree_depth(struct btree *tree, struct btree_node *node)
 {
 	if ( node == NULL)
 		return 0;
@@ -197,7 +208,7 @@ int bintree_depth(struct btree *tree, struct btree_node *node)
 	}
 }
 
-int bintree_isbalance(struct btree *tree, struct btree_node *node)
+static int bintree_isbalance(struct btree *tree, struct btree_node *node)
 {
 	int dis, ret = 0;
 
@@ -214,7 +225,7 @@ int bintree_isbalance(struct btree *tree, struct btree_node *node)
 	return ret;
 }
 
-int btree_isbalance(struct btree *tree)
+static int sbtree_isbalance(struct btree *tree)
 {
 	return bintree_isbalance(tree, tree->root) == 0;
 }

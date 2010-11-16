@@ -25,7 +25,8 @@ static struct btree_info *btree_ui_create(void)
 
 	bi->userinfo_store = store_open_memory(sizeof(struct user_info), 1024);
 //	bi->userinfo_store = store_open_disk("/tmp/temp", sizeof(struct user_info), 1024);
-	bi->tree = btree_new_memory(bi->userinfo_store, (int(*)(const void *, const void *))userinfo_compare, \
+
+	bi->tree = sbtree_new_memory(bi->userinfo_store, (int(*)(const void *, const void *))userinfo_compare, 
 			(int (*)(void*, void*))userinfo_update);
 
 	return bi;
@@ -85,8 +86,20 @@ static void btree_ui_out(struct btree_info *ui, const char *filename)
 		if (out == NULL)
 			out = stdout;
 	}
+#if 0
 	btree_print(ui->tree, (void (*)(void*, void*))userinfo_print, out);
+#else
+	{
+		int i;
 
+		for (i=0; i < ui->tree->entries_num; i++) {
+			struct user_info *info = store_read(ui->userinfo_store, i);
+			userinfo_print(out, info);
+
+			store_release(ui->userinfo_store, i, info);
+		}
+	}
+#endif
 	if (out != stdout)
 		fclose(out);
 }
@@ -103,7 +116,7 @@ static int btree_ui_find(struct btree_info *ui, const char *key)
 	return btree_find(ui->tree, key);
 }
 
-ui btree_ui = {
+ui sbtree_ui = {
 	.init    = (void *(*)(void))                            btree_ui_create,
 	.addfile = (int (*)(void*, const char *, int *, int *)) btree_ui_addfile,
 	.out     = (void (*)(void*, const char *))              btree_ui_out,
