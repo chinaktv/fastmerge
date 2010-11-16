@@ -15,8 +15,9 @@ int main(int argc, char **argv)
 	DIR *dirp;
 	struct dirent *direp = NULL;
 	char *outfile = NULL;
+	int add, update;
 
-	ui *userinfo;
+	ui *userinfo = NULL;
 	
 	if (argc < 4) {
 		printf("%s <user_info.csv> <1/2> <path> [out.csv]\n", argv[0]);
@@ -32,7 +33,8 @@ int main(int argc, char **argv)
 		outfile = argv[4];
 
 	ui_init(userinfo);
-	ui_addfile(userinfo, argv[2]);
+	add = update = 0;
+	ui_addfile(userinfo, argv[2], &add, &update);
 #if 0
 	{
 		char *key, str[256];
@@ -58,13 +60,18 @@ int main(int argc, char **argv)
 
 	if (dirp) {
 		char filename[256];
+
 		direp = readdir(dirp);
 		for (; direp != NULL; direp = readdir(dirp)) {
 			if (!strcmp(direp->d_name, ".") || !strcmp(direp->d_name, ".."))
 				continue;
 		
 			sprintf(filename, "%s/%s", argv[3], direp->d_name);
-			ui_addfile(userinfo, filename);
+			add = update = 0;
+			ui_addfile(userinfo, filename, &add, &update);
+
+			if (update != 0)
+				printf("%s add %d, update %d\n", filename, add, update);
 		}
 
 		closedir(dirp);

@@ -18,7 +18,10 @@ struct btree_info {
 
 static struct btree_info *btree_ui_create(void)
 {
-	struct btree_info *bi = (struct btree_info*)malloc(sizeof(struct btree_info));
+	struct btree_info *bi;
+	
+	bi = (struct btree_info*)malloc(sizeof(struct btree_info));
+	assert(bi);
 
 	bi->userinfo_store = store_open_memory(sizeof(struct user_info), 1024);
 //	bi->userinfo_store = store_open_disk("/tmp/temp", sizeof(struct user_info), 1024);
@@ -27,27 +30,32 @@ static struct btree_info *btree_ui_create(void)
 	return bi;
 }
 
-static int userinfo_insert(struct btree *tree, char *info_str)
+static int userinfo_insert(struct btree *tree, char *info_str, int *add, int *update)
 {
 	struct user_info new_data;
 	char key[20] = {0, }, *p;
+	int len;
 
 	if (tree == NULL || info_str == NULL)
 		return -1;
 
 	p = strchr(info_str, ',');
 
+	len  =p - info_str;
+	if (len > 18)
+		len = 18;
+
 	memcpy(key, info_str, p - info_str);
 
 	memset(&new_data, 0, sizeof(struct user_info));
 	userinfo_parser(&new_data, info_str);
 
-	btree_insert(tree, &new_data, key);
+	btree_insert(tree, &new_data, key, add, update);
 
 	return 0;
 }
 
-static int btree_ui_addfile(struct btree_info *bi, const char *filename)
+static int btree_ui_addfile(struct btree_info *bi, const char *filename, int *add, int *update)
 {
 	if (filename && bi) {
 		FILE *fp;
@@ -55,7 +63,7 @@ static int btree_ui_addfile(struct btree_info *bi, const char *filename)
 		if ((fp  = fopen(filename, "r")) != NULL) {
 			while (!feof(fp)) {
 				if (fgets(str, 512, fp))
-					userinfo_insert(bi->tree, str);
+					userinfo_insert(bi->tree, str, add, update);
 			}
 			fclose(fp);
 
@@ -95,10 +103,10 @@ static int btree_ui_find(struct btree_info *ui, const char *key)
 }
 
 ui btree_ui = {
-	.init    = (void *(*)(void))              btree_ui_create,
-	.addfile = (int (*)(void*, const char *)) btree_ui_addfile,
-	.out     = (void (*)(void*, const char *))btree_ui_out,
-	.free    = (void (*)(void *))             btree_ui_free,
-	.find    = (int (*)(void *, const char*)) btree_ui_find,
+	.init    = (void *(*)(void))                            btree_ui_create,
+	.addfile = (int (*)(void*, const char *, int *, int *)) btree_ui_addfile,
+	.out     = (void (*)(void*, const char *))              btree_ui_out,
+	.free    = (void (*)(void *))                           btree_ui_free,
+	.find    = (int (*)(void *, const char*))               btree_ui_find,
 };
 

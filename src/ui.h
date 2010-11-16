@@ -19,7 +19,7 @@
 typedef struct algorithm {
 	void *_private;
 	void* (*init)(void);
-	int   (*addfile)(void *info, const char *filename);
+	int   (*addfile)(void *info, const char *filename, int *add, int *update);
 	void  (*out)(void *info, const char *file);
 	void  (*end)(void *info);
 	void  (*free)(void *info);
@@ -28,7 +28,7 @@ typedef struct algorithm {
 
 int  ui_init   (ui *info);
 void ui_free   (ui *info);
-int  ui_addfile(ui *info, const char *filename);
+int  ui_addfile(ui *info, const char *filename, int *add, int *update);
 void ui_out    (ui *info, const char *filename);
 int  ui_find   (ui *info, const char *key);
 void ui_end    (ui *info);

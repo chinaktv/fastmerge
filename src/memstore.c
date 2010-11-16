@@ -6,17 +6,17 @@
 #include <malloc.h>
 
 struct memStore {
-	void ** store;
+	void **store;
 	size_t blockSize;
-	off_t blockCount;
-	off_t newLastBlock;
-	int calledFree;
-	long total;
+	off_t  blockCount;
+	off_t  newLastBlock;
+	int    calledFree;
+	long   total;
 };
 
 static struct memStore *ms_open(size_t blockSize, off_t blockCount);
 static void   ms_close       (struct memStore * ms);
-static void * ms_readBlock   (struct memStore * ms, off_t blockNumber);
+static void  *ms_readBlock   (struct memStore * ms, off_t blockNumber);
 static void   ms_writeBlock  (struct memStore * ms, off_t blockNumber, void *block);
 static off_t  ms_newBlock    (struct memStore * ms);
 static void   ms_releaseBlock(struct memStore * ms, off_t blockNumber, void *block);
@@ -42,6 +42,8 @@ static off_t  ms_find_free_block(struct memStore * ms, off_t startBlock, off_t S
 struct store * store_open_memory(size_t blockSize, off_t blockCount) 
 {
 	struct store * store = malloc(sizeof(struct store));
+	
+	assert(store);
 	memset(store, 0, sizeof(struct store));
 	store->functions = &memory_functions;
 	store->store_p = ms_open(blockSize, blockCount);
@@ -53,9 +55,12 @@ static struct memStore * ms_open(size_t blockSize, off_t blockCount)
 {
 	struct memStore * ms = (struct memStore *) malloc(sizeof(struct memStore));
 
+	assert(ms);
 	memset(ms, 0, sizeof(struct memStore));
 
 	ms->store = (void **)calloc(blockCount, sizeof(void **));
+	assert(ms->store);
+
 	ms->blockSize = blockSize;
 	ms->blockCount = blockCount;
 	ms->newLastBlock = 0;
@@ -107,6 +112,8 @@ static off_t ms_newBlock(struct memStore * ms)
 
 	if(newBlock != -1) {
 		ms->store[newBlock] = malloc(ms->blockSize);
+		assert(ms->store[newBlock]);
+
 		ms->newLastBlock = newBlock + 1;
 		return newBlock;
 	}
@@ -117,6 +124,7 @@ static off_t ms_newBlock(struct memStore * ms)
 		newBlock = ms_find_free_block(ms, current_block, initial_block+1);
 		if(newBlock != -1) {
 			ms->store[newBlock] = malloc(ms->blockSize);
+			assert(ms->store[newBlock]);
 			ms->newLastBlock = newBlock +1;
 			return newBlock;
 		}
@@ -130,6 +138,7 @@ static off_t ms_newBlock(struct memStore * ms)
 	ms_grow_store(ms, ms->blockCount * 2);
 
 	ms->store[newBlock] = malloc(ms->blockSize);
+	assert(ms->store[newBlock]);
 
 	return newBlock;
 }
@@ -139,7 +148,7 @@ void ms_freeBlock(struct memStore * ms, off_t blockNumber)
 	void * block = ms_readBlock(ms, blockNumber);
 	assert(block != 0);
 
-	ms->store[blockNumber] = (void*)0; /* Remove soon-to-be dangling reference. */
+	ms->store[blockNumber] = NULL; /* Remove soon-to-be dangling reference. */
 	ms->calledFree = 1;
 
 	free(block);
@@ -149,10 +158,6 @@ static off_t ms_find_free_block(struct memStore * ms, off_t startBlock, off_t st
 {
 	off_t i;
 
-	if(startBlock < 0) startBlock = 0;
-	if(stopBlock < 0) stopBlock = 0;
-	if(stopBlock > ms->blockCount) stopBlock = ms->blockCount;
-	if(startBlock > stopBlock) startBlock = stopBlock;
 	for(i = startBlock; i < stopBlock; i++) {
 		if(ms->store[i] == 0) {
 			return i;
@@ -168,7 +173,9 @@ static void ms_grow_store(struct memStore * ms, off_t newCount)
 	assert(newCount > ms->blockCount);
 
 	ms->store = calloc(newCount, ms->blockSize);
-	ms->store = memcpy(ms->store, oldStore, ms->blockCount * sizeof(void**));
+	assert(ms->store);
+
+	memcpy(ms->store, oldStore, ms->blockCount * sizeof(void**));
 	ms->blockCount = newCount;
 	free(oldStore);
 }

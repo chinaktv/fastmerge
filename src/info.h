@@ -53,6 +53,7 @@ struct user_info {
 #endif
 };
 
+inline int FAST_HASH(const char *P) ;
 
 int  userinfo_parser (struct user_info *info, char *info_str);
 int  userinfo_update (struct user_info *old, struct user_info *_new);

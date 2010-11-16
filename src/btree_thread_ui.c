@@ -39,6 +39,8 @@ struct mqueue *mq_create(void)
 	int i;
 
 	mq = (struct mqueue *)malloc(sizeof(struct mqueue));
+	assert(mq);
+
 	memset(mq, 0, sizeof(struct mqueue));
 
 	sem_init(&mq->get_sem, 0, MAX_BUF - 1);
@@ -79,6 +81,7 @@ void mq_append(struct mqueue *mq, struct info_node *node)
 struct info_node *mq_get(struct mqueue *mq)
 {
 	struct info_node *node = NULL;
+
 	sem_wait(&mq->get_sem);
 
 	node = mq->node[mq->front];
@@ -93,6 +96,7 @@ struct bthread_node {
 	int count;
 	struct list_head info_str_head;
 	struct bthread_info *bi;
+	int add, update;
 
 	struct btree *tree;
 	struct store *store;
@@ -126,22 +130,27 @@ struct info_node *node_list_get(struct list_head *head)
 	return sta;
 }
 
-static int userinfo_insert(struct btree *tree, char *info_str)
+static int userinfo_insert(struct btree *tree, char *info_str, int *add, int *update)
 {
 	struct user_info new_data;
 	char key[20] = {0, }, *p;
+	int len;
 
 	if (tree == NULL || info_str == NULL)
 		return -1;
 
 	p = strchr(info_str, ',');
 
+	len  =p - info_str;
+	if (len > 18)
+		len = 18;
+
 	memcpy(key, info_str, p - info_str);
 
 	memset(&new_data, 0, sizeof(struct user_info));
 	userinfo_parser(&new_data, info_str);
 
-	btree_insert(tree, &new_data, key);
+	btree_insert(tree, &new_data, key, add, update);
 
 	return 0;
 }
@@ -149,6 +158,9 @@ static int userinfo_insert(struct btree *tree, char *info_str)
 void *insert_thread(struct bthread_node *thread_node)
 {
 	struct info_node *str_node;
+
+	thread_node->add = thread_node->update = 1;
+
 	while (!thread_node->eof) {
 		sem_wait(&thread_node->sem);
 		NODE_LOCK(thread_node);
@@ -157,11 +169,12 @@ void *insert_thread(struct bthread_node *thread_node)
 
 		if (str_node) {
 			thread_node->count++;
-			userinfo_insert(thread_node->tree, str_node->str);
+			userinfo_insert(thread_node->tree, str_node->str, &thread_node->add, &thread_node->update);
 			mq_append(thread_node->bi->free_queue, str_node);
 		}
-		else
+		else  {
 			break;
+		}
 	} 
 
 //	printf("insert %d pthread exit\n", thread_node->count);
@@ -170,10 +183,12 @@ void *insert_thread(struct bthread_node *thread_node)
 	return NULL;
 }
 
-static struct bthread_info *btree_ui_create(void)
+static struct bthread_info *btree_thread_ui_create(void)
 {
 	int i;
 	struct bthread_info *bi = (struct bthread_info*)malloc(sizeof(struct bthread_info));
+
+	assert(bi);
 
 	bi->free_queue = mq_create();
 
@@ -194,10 +209,11 @@ static struct bthread_info *btree_ui_create(void)
 	return bi;
 }
 
-static int btree_ui_addfile(struct bthread_info *bi, const char *filename)
+static int btree_thread_ui_addfile(struct bthread_info *bi, const char *filename)
 {
 	if (filename && bi) {
 		FILE *fp;
+
 		if ((fp  = fopen(filename, "r")) != NULL) {
 			while (!feof(fp)) {
 				struct info_node *node = mq_get(bi->free_queue);
@@ -227,7 +243,7 @@ static int btree_ui_addfile(struct bthread_info *bi, const char *filename)
 	return -1;
 }
 
-static void btree_ui_out(struct bthread_info *ui, const char *filename)
+static void btree_thread_ui_out(struct bthread_info *ui, const char *filename)
 {
 	int i;
 	FILE *out = stdout;
@@ -246,7 +262,7 @@ static void btree_ui_out(struct bthread_info *ui, const char *filename)
 		fclose(out);
 }
 
-static void btree_ui_end(struct bthread_info *ui)
+static void btree_thread_ui_end(struct bthread_info *ui)
 {
 	int i;
 	void *value_ptr;
@@ -263,7 +279,7 @@ static void btree_ui_end(struct bthread_info *ui)
 	mq_free(ui->free_queue);
 }
 
-static void btree_ui_free(struct bthread_info *ui)
+static void btree_thread_ui_free(struct bthread_info *ui)
 {
 	int i;
 
@@ -276,10 +292,10 @@ static void btree_ui_free(struct bthread_info *ui)
 }
 
 ui bthread_ui = {
-	.init    = (void *(*)(void))btree_ui_create,
-	.addfile = (int (*)(void*, const char *))btree_ui_addfile,
-	.out     = (void (*)(void*, const char *))btree_ui_out,
-	.free    = (void (*)(void *))btree_ui_free,
-	.end     = (void (*)(void *))btree_ui_end,
+	.init    = (void *(*)(void))                           btree_thread_ui_create,
+	.addfile = (int (*)(void*, const char *, int*, int*))  btree_thread_ui_addfile,
+	.out     = (void (*)(void*, const char *))             btree_thread_ui_out,
+	.free    = (void (*)(void *))                          btree_thread_ui_free,
+	.end     = (void (*)(void *))                          btree_thread_ui_end,
 };
 

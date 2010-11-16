@@ -140,9 +140,9 @@ int userinfo_update(struct user_info *old, struct user_info *_new)
 update:
 #if 0
 #if PARSE_INFO
-	printf("%s -> %s", _new->name, old->name);
+	printf("%s(%s) -> %s(%s)\n", _new->card, _new->name, old->card, old->name);
 #else	
-	printf("%s -> %s", _new->str, old->str);
+	printf("%s -> %s\n", _new->str, old->str);
 #endif
 #endif
 	memcpy(old, _new, sizeof(struct user_info));
@@ -236,5 +236,19 @@ void userinfo_print(FILE *fp, struct user_info *i)
 #else
 	fprintf(fp, "%s", i->str);
 #endif
+}
+
+inline int FAST_HASH(const char *P) 
+{
+	u_int32_t __h;
+	u_int8_t *__cp, *__hp;
+	__hp = (u_int8_t *)&__h;
+	__cp = (u_int8_t *)(P);
+	__hp[3] = __cp[0] ^ __cp[4];
+	__hp[2] = __cp[1] ^ __cp[5];
+	__hp[1] = __cp[2] ^ __cp[6];
+	__hp[0] = __cp[3] ^ __cp[7];
+
+	return __h;                   
 }
 
