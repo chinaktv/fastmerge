@@ -10,7 +10,7 @@
 
 #define REC_DEPTH 0
 
-static void sbtree_print    (struct btree * tree, void (*print)(void *, void*), void *userdata);
+static void sbtree_print    (struct btree * tree, struct btree_node *node, void (*print)(void *, void*), void *userdata);
 static void sbtree_insert   (struct btree * tree, void *data, const char *key, int *add, int *update);
 static void sbtree_close    (struct btree * tree);
 static int  sbtree_find     (struct btree *tree, const char *key);
@@ -48,7 +48,7 @@ struct btree *sbtree_new_memory(struct store *store, int (*compare)(const void*,
 
 static struct btree_node *node_new(struct btree *tree, void *data, const char *key)
 {
-	struct btree_node * p_node;
+	struct btree_node *p_node;
 
 	if (tree->node_pool->used_id >= ALLOC_NUM) {
 		tree->node_pool = (struct btree_node_head *) calloc(1, sizeof(struct btree_node_head));
@@ -80,12 +80,12 @@ static void sbtree_insert(struct btree * tree, void *data, const char *key, int 
 	}
 
 	while  ( thiz != NULL ) {
-		int cmp = strcmp(key, thiz->key);
+		int cmp = strncmp(key, thiz->key, KEY_LEN);
 
 		if (cmp == 0) {
 			if (tree->insert_eq) {
 				void * pptr_data_ptr = store_read(tree->store, thiz->data);
-				if (tree->insert_eq(pptr_data_ptr, data) == 0) {
+				if (tree->insert_eq(pptr_data_ptr, data) < 0) {
 					store_write(tree->store, thiz->data, pptr_data_ptr);
 					(*update)++;
 				}
@@ -119,7 +119,7 @@ static void sbtree_insert(struct btree * tree, void *data, const char *key, int 
 static int bintree_find(struct btree * tree, struct btree_node * node, const char *key, int *depth)
 {
 	int ret = 1;
-	int cmp = strncmp(key, node->key, sizeof(node->key));
+	int cmp = strncmp(key, node->key, KEY_LEN);
 
 	if (cmp < 0) {
 		if(node->left == NULL) {
@@ -127,7 +127,7 @@ static int bintree_find(struct btree * tree, struct btree_node * node, const cha
 		} else {
 			struct btree_node * left = node->left;
 			*depth += 1;
-			ret = bintree_find (tree, left, key, depth);
+			ret = bintree_find(tree, left, key, depth);
 		}
 	} 
 	else if (cmp > 0){
@@ -137,7 +137,7 @@ static int bintree_find(struct btree * tree, struct btree_node * node, const cha
 			struct btree_node * right = node->right;
 
 			*depth += 1;
-			ret = bintree_find (tree, right, key, depth);
+			ret = bintree_find(tree, right, key, depth);
 		}
 	}
 
@@ -177,23 +177,18 @@ static void sbtree_close(struct btree * tree)
 	free(tree);
 }
 
-static void print_subtree(struct btree * tree, struct btree_node * node, void (*print)(void *, void*), void *userdata)
+static void sbtree_print(struct btree * tree, struct btree_node * node, void (*print)(void *, void*), void *userdata)
 {
 	if  ( node == NULL )
 		return;
 
 	if(node->left != NULL)
-		print_subtree(tree, node->left, print, userdata);
+		sbtree_print(tree, node->left, print, userdata);
 	if (print)
 		print(userdata, store_read(tree->store, node->data));
 
 	if(node->right != NULL)
-		print_subtree(tree, node->right, print, userdata);
-}
-
-static void sbtree_print(struct btree * tree, void (*print)(void *, void*), void *userdata)
-{
-	print_subtree(tree, tree->root, print, userdata);
+		sbtree_print(tree, node->right, print, userdata);
 }
 
 static int bintree_depth(struct btree *tree, struct btree_node *node)
@@ -222,6 +217,7 @@ static int bintree_isbalance(struct btree *tree, struct btree_node *node)
 	else
 		ret = bintree_isbalance(tree, node->left) && bintree_isbalance(tree, node->right);
 
+	printf("dis=%d, ret=%d\n", dis, ret);
 	return ret;
 }
 

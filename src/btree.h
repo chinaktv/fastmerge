@@ -9,6 +9,7 @@
 #include "list.h"
 #include "memwatch.h"
 
+#define KEY_LEN 17
 #define ALLOC_NUM 1024
 struct btree_node {
 	struct btree_node *left, *right, *parent;
@@ -39,7 +40,7 @@ struct btree {
 
 	void (*close)    (struct btree * tree);
 	void (*insert)   (struct btree * tree, void *data, const char *key, int *add, int *update);
-	void (*show)     (struct btree * tree, void (*print_func)(void *, void*), void *userdata);
+	void (*show)     (struct btree * tree, struct btree_node *node, void (*print_func)(void *, void*), void *userdata);
 	int  (*find)     (struct btree * tree, const char *key);
 	int  (*isbalance)(struct btree * tree);
 };
@@ -51,7 +52,7 @@ struct btree *avlbtree_new_memory(struct store *store, int (*compare)(const void
 #define btree_insert(tree, data, key, add, update) tree->insert((tree), (data), (key), (add), (update))
 #define btree_find(tree, key)                      tree->find((tree), (key))
 #define btree_isbalance(tree)                      tree->isbalance((tree))
-#define btree_print(tree, print_func, userdata)    tree->show((tree), (void (*)(void *, void*))(print_func), (userdata))
+#define btree_print(tree, print_func, userdata)    tree->show((tree), (tree)->root, (void (*)(void *, void*))(print_func), (userdata))
 
 #endif 
 

@@ -52,7 +52,7 @@ static int userinfo_insert(struct btree *tree, char *info_str, int *add, int *up
 	memset(&new_data, 0, sizeof(struct user_info));
 	userinfo_parser(&new_data, info_str);
 
-	btree_insert(tree, &new_data, key, add, update);
+	btree_insert(tree, &new_data, new_data.str, add, update);
 
 	return 0;
 }
@@ -69,6 +69,8 @@ static int btree_ui_addfile(struct btree_info *bi, const char *filename, int *ad
 			}
 			fclose(fp);
 
+			if (btree_isbalance(bi->tree) != 0)
+				printf("isbalance\n");
 			return 0;
 		}
 	}
@@ -86,7 +88,7 @@ static void btree_ui_out(struct btree_info *ui, const char *filename)
 		if (out == NULL)
 			out = stdout;
 	}
-#if 0
+#if 1
 	btree_print(ui->tree, (void (*)(void*, void*))userinfo_print, out);
 #else
 	{

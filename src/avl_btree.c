@@ -10,7 +10,7 @@
 
 #define REC_DEPTH 0
 
-static void avlbtree_print    (struct btree *tree, void (*print)(void *, void*), void *userdata);
+static void avlbtree_print    (struct btree *tree, struct btree_node *node, void (*print)(void *, void*), void *userdata);
 static void avlbtree_insert   (struct btree *tree, void *data, const char *key, int *add, int *update);
 static void avlbtree_close    (struct btree *tree);
 static int  avlbtree_find     (struct btree *tree, const char *key);
@@ -72,54 +72,91 @@ static struct btree_node *node_new(struct btree *tree, void *data, const char *k
 
 static void btree_rotate_left(struct btree *tree, struct btree_node *ancestor)
 {
-	struct btree_node *r = ancestor->right;//旋转元素的右子节点  
-        //把旋转元素的右子节点的左子节点接到旋转元素的右子树  
-        ancestor->right = r->left;//①  
-        //如果旋转元素的右子节点存在左子节点的话，同时修改该节点的父节指针指向  
-        if (r->left != NULL) {  
-            //把旋转元素的右子节点的左子节点的父设置成旋转元素  
-            r->left->parent = ancestor;//②  
-        }  
-        //将旋转元素的右子节点的父设置成旋转元素的父，这里有可以p为根节点，那么旋转后p就成根节点  
-        r->parent = ancestor->parent;//③  
-  
-        //如果旋转元素为根元素，则旋转后，旋转元素的右子节点r将成为根节点  
-        if (ancestor->parent == NULL) {  
-            tree->root = r;  
-        }//否则p不是根节点，如果p是他父节点的左节点时  
-        else if (ancestor->parent->left == ancestor) {  
-            //让p的父节点的左指针指向r  
-            ancestor->parent->left = r;  
-        }//否则如果p是他父节点的右节点时  
-        else {  
-            //让p的父节点的右指针指向r  
-            ancestor->parent->right = r;//④  
-        }  
-        //让旋转元素的左节点指向旋转元素p  
-        r->left = ancestor;//⑤  
-        //让旋转元素的父节点指向旋转元素右节点r  
-        ancestor->parent = r;//⑥  
+     /* 
+        * 围绕50左旋转: 
+        *p → 50                 90 
+        *     \                 /\ 
+        * r → 90      →       50 100 
+        *      \ 
+        *     100 
+        *  
+        * 围绕80左旋转:r的左子树变成p的右子树。因为位于r的左子树上的任意一个元素值大于p且小于r，所以r的左子 
+        * 树可以成为p的右子树这是没有问题的。其实上面也发生了同样的现象，只是r的左子树为空罢了 
+        *  p → 80                  90 
+        *      /\                  /\  
+        *     60 90 ← r     →     80 120 
+        *        /\               /\   / 
+        *      85 120           60 85 100 
+        *          / 
+        *         100 
+        *  
+        * 围绕80在更大范围内旋转：元素不是围绕树的根旋转。旋转前后的树都是二叉搜索树。且被旋转元素80上的所 
+        * 有元素在旋转中不移动（50、30、20、40这四个元素还是原来位置） 
+        *       50                         50 
+        *       / \                        / \ 
+        *     30   80 ← p                 30  90 
+        *     /\   /\                     /\  / \ 
+        *   20 40 60 90 ← r      →      20 40 80 120 
+        *            /\                       /\   / 
+        *           85 120                  60 85 100 
+        *              / 
+        *             100 
+        */
+	struct btree_node *r = ancestor->right;
+
+	ancestor->right = r->left;
+	if (r->left != NULL)
+		r->left->parent = ancestor;
+	r->parent = ancestor->parent;
+
+	if (ancestor->parent == NULL)
+		tree->root = r;
+	else if (ancestor->parent->left == ancestor)
+		ancestor->parent->left = r;  
+	else
+		ancestor->parent->right = r;
+
+	r->left = ancestor;
+	ancestor->parent = r;
 }
 
 static void btree_rotate_right(struct btree *tree, struct btree_node *ancestor)
 {
-        struct btree_node *l = ancestor->left;  
-        
+        /* 
+        * 围绕100右旋转: 
+        *  p → 100              90 
+        *       /               /\ 
+        * l → 90      →       50 100 
+        *     / 
+        *    50 
+        *  
+        * 围绕80右旋转:l的右子树变成p的左子树。因为位于l的右子树上的任意一个元素值小于p且小于l，所以l的右 
+        * 子树可以成为p的左子树这是没有问题的。其实上面也发生了同样的现象，只是l的右子树为空罢了 
+        *  
+        *  p → 80                  60 
+        *      /\                  /\  
+        * l → 60 90         →     50 80 
+        *     /\                   \  /\ 
+        *    50 70                55 70 90    
+        *     \    
+        *     55 
+        */  
+	struct btree_node *l = ancestor->left;  
+
 	ancestor->left = l->right;  
-        if (l->right != NULL) {  
-            l->right->parent = ancestor;  
-        }  
-        l->parent = ancestor->parent;  
-  
-        if (ancestor->parent == NULL) {  
-            tree->root = l;  
-        } else if (ancestor->parent->right == ancestor) {
-            ancestor->parent->right = l;  
-        } else {  
-            ancestor->parent->left = l;  
-        }  
-        l->right = ancestor;  
-        ancestor->parent = l;  
+	if (l->right != NULL)
+		l->right->parent = ancestor; 
+	l->parent = ancestor->parent;  
+
+	if (ancestor->parent == NULL)
+		tree->root = l;  
+	else if (ancestor->parent->right == ancestor) 
+		ancestor->parent->right = l;  
+	else
+		ancestor->parent->left = l;  
+
+	l->right = ancestor;  
+	ancestor->parent = l;  
 }
 
 static void btree_adjust_path(struct btree_node *to, struct btree_node *inserted) 
@@ -127,7 +164,7 @@ static void btree_adjust_path(struct btree_node *to, struct btree_node *inserted
     struct btree_node *tmp = inserted->parent;  
 
     //从新增节点的父节点开始向上回溯调整，直到结尾节点to止  
-    while (tmp != to) {  
+    while (tmp != to) {
         /* 
          * 插入30，则在25右边插入，这样父节点平衡会被打破，右子树就会比左子树高1，所以平衡因子为R；祖 
          * 先节点50的平衡因子也被打破，因为在50的左子树上插入的，所以对50来说，左子树会比右子树高1，所 
@@ -151,7 +188,7 @@ static void btree_adjust_path(struct btree_node *to, struct btree_node *inserted
     }  
 }  
 
-void adjustLeftRigth(struct btree_node *ancestor, struct btree_node *inserted) 
+static void adjustLeftRigth(struct btree_node *ancestor, struct btree_node *inserted) 
 {
     if (ancestor->parent == inserted) {  
         /* 
@@ -239,10 +276,10 @@ void adjustLeftRigth(struct btree_node *ancestor, struct btree_node *inserted)
          *        =  =  =   =  =                      =  =  =   =  = 
          *           
          */  
-        ancestor->parent->left->balance = 'L';  
+        ancestor->parent->left->balance = 'L';
   
-        ancestor->balance = '=';  
-        //调整ancestor节点到插入点路径上节点平衡因子  
+        ancestor->balance = '=';
+        //调整ancestor节点到插入点路径上节点平衡因子
         btree_adjust_path(ancestor, inserted);  
     }  
 }  
@@ -366,14 +403,14 @@ static int bintree_fixAfterInsertion(struct btree *tree, struct btree_node *ance
 		//根节点的平衡因子我们单独拿出来调整，因为adjustPath的参数好比是一个开区间，它不包括两头参数  
 		//本身，而是从nserted.paraent开始到to的子节点为止，所以需单独调整，其他分支也一样  
 
-		struct btree_node *root = store_read(tree->store, tree->root->data);
+		struct btree_node *root = tree->root;
 		if (strcmp(inserted->key, root->key) < 0)
 			root->balance = 'L';
 		else
 			root->balance = 'R';
 
 		//再调用adjustPath方法调整新增节点的父节点到root的某子节点路径上的所有祖先节点的平衡因子  
-//		adjustPath(root, inserted);  
+		btree_adjust_path(root, inserted);  
 	} 
 	else if ((ancestor->balance == 'L' && strcmp(inserted->key, ancestor->key) > 0)  
 			|| (ancestor->balance == 'R' && strcmp(inserted->key, ancestor->key) < 0)) {  
@@ -402,7 +439,7 @@ static int bintree_fixAfterInsertion(struct btree *tree, struct btree_node *ance
 		//先设置ancestor的平衡因子为 平衡  
 		ancestor->balance = '=';  
 		//然后按照一般策略对inserted与ancestor间的元素进行调整  
-//		adjustPath(ancestor, inserted);  
+		btree_adjust_path(ancestor, inserted);  
 	} 
 	else if (ancestor->balance == 'R' && strcmp(inserted->key, ancestor->right->key) > 0) {  
 		/* 
@@ -426,9 +463,9 @@ static int bintree_fixAfterInsertion(struct btree *tree, struct btree_node *ance
 		//围绕ancestor执行一次左旋  
 		btree_rotate_left(tree, ancestor);  
 		//再调整ancestor->paraent（90）到新增节点路径上祖先节点平衡  
-//		adjustPath(ancestor->parent, inserted);  
+		btree_adjust_path(ancestor->parent, inserted);  
 	} 
-	else if (ancestor->balance == 'L' && strcmp(inserted->key, ancestor->left->key) > 0) { 
+	else if (ancestor->balance == 'L' && strcmp(inserted->key, ancestor->left->key) < 0) { 
 		/* 
 		 * 情况4： 
 		 * ancestor->balance的值为 L，并且被插入的Entry位于ancestor的左子树的左子树上， 
@@ -450,7 +487,7 @@ static int bintree_fixAfterInsertion(struct btree *tree, struct btree_node *ance
 		//围绕ancestor执行一次右旋  
 		btree_rotate_right(tree, ancestor);  
 		//再调整ancestor->paraent（20）到新增节点路径上祖先节点平衡  
-//		adjustPath(ancestor->parent, inserted);  
+		btree_adjust_path(ancestor->parent, inserted);  
 	} 
 	else if (ancestor->balance == 'L' && strcmp(inserted->key, ancestor->left->key) > 0) { 
 		/* 
@@ -463,7 +500,7 @@ static int bintree_fixAfterInsertion(struct btree *tree, struct btree_node *ance
 		btree_rotate_left(tree, ancestor->left);  
 		btree_rotate_right(tree, ancestor);  
 		//旋转后调用 左-右旋 专有方法进行平衡因子的调整  
-//		adjustLeftRigth(ancestor, inserted);  
+		adjustLeftRigth(ancestor, inserted);  
 	} 
 	else if (ancestor->balance == 'R' && strcmp(inserted->key, ancestor->right->key) < 0) { 
 
@@ -477,7 +514,7 @@ static int bintree_fixAfterInsertion(struct btree *tree, struct btree_node *ance
 		btree_rotate_right(tree, ancestor->right);  
 		btree_rotate_left(tree, ancestor);  
 		//旋转后调用 右-左旋 专有方法进行平衡因子的调整  
-//		adjustRigthLeft(ancestor, inserted);  
+		adjustRigthLeft(ancestor, inserted);  
 	}  
 
 	return 0;
@@ -500,13 +537,13 @@ static void avlbtree_insert(struct btree * tree, void *data, const char *key, in
 		if (cmp == 0) {
 			if (tree->insert_eq) {
 				void * pptr_data_ptr = store_read(tree->store, thiz->data);
-				if (tree->insert_eq(pptr_data_ptr, data) == 0) {
+				if (tree->insert_eq(pptr_data_ptr, data) < 0) {
 					store_write(tree->store, thiz->data, pptr_data_ptr);
 					(*update)++;
 				}
 				store_release(tree->store, thiz->data, pptr_data_ptr);
 			}
-			break;
+			return;
 		}
 
 		//记录不平衡的祖先节点  
@@ -520,6 +557,8 @@ static void avlbtree_insert(struct btree * tree, void *data, const char *key, in
 				thiz = thiz->left;
 			else {
 				thiz->left = node_new(tree, data, key);
+				thiz->left->parent = thiz;
+				bintree_fixAfterInsertion(tree, ancestor, thiz->left);
 				(*add)++;
 
 				break;
@@ -530,9 +569,9 @@ static void avlbtree_insert(struct btree * tree, void *data, const char *key, in
 				thiz = thiz->right;
 			else {
 				thiz->right = node_new(tree, data, key);
-				(*add)++;
-
+				thiz->right->parent = thiz;
 				bintree_fixAfterInsertion(tree, ancestor, thiz->right);
+				(*add)++;
 
 				break;
 			}
@@ -601,23 +640,18 @@ static void avlbtree_close( struct btree * tree )
 	free(tree);
 }
 
-static void print_subtree(struct btree * tree, struct btree_node * node, void (*print)(void *, void*), void *userdata)
+static void avlbtree_print(struct btree * tree, struct btree_node * node, void (*print)(void *, void*), void *userdata)
 {
 	if  ( node == NULL )
 		return;
 
 	if(node->left != NULL)
-		print_subtree(tree, node->left, print, userdata);
+		avlbtree_print(tree, node->left, print, userdata);
 	if (print)
 		print(userdata, store_read(tree->store, node->data));
 
 	if(node->right != NULL)
-		print_subtree(tree, node->right, print, userdata);
-}
-
-static void avlbtree_print(struct btree * tree, void (*print)(void *, void*), void *userdata)
-{
-	print_subtree(tree, tree->root, print, userdata);
+		avlbtree_print(tree, node->right, print, userdata);
 }
 
 static int bintree_depth(struct btree *tree, struct btree_node *node)
@@ -645,6 +679,7 @@ static int bintree_isbalance(struct btree *tree, struct btree_node *node)
 		ret = 1;
 	else
 		ret = bintree_isbalance(tree, node->left) && bintree_isbalance(tree, node->right);
+	printf("dis=%d, ret=%d\n", dis, ret);
 
 	return ret;
 }

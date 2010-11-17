@@ -117,23 +117,35 @@ int userinfo_update(struct user_info *old, struct user_info *_new)
 #endif
 	if (old_t.tm_year < new_t.tm_year)
 		goto update;
+	else if (old_t.tm_year > new_t.tm_year)
+		return 1;
 
 	if (old_t.tm_mon < new_t.tm_mon)
 		goto update;
+	else if (old_t.tm_mon > new_t.tm_mon)
+		return 1;
 
-	if (old_t.tm_mday < new_t.tm_mday)
+	if (old_t.tm_mday < new_t.tm_mday) 
 		goto update;
+	else if (old_t.tm_mday > new_t.tm_mday)
+		return 1;
 
 	if (old_t.tm_hour < new_t.tm_hour)
 		goto update;
+	else if (old_t.tm_hour > new_t.tm_hour)
+		return 1;
 
 	if (old_t.tm_min < new_t.tm_min)
 		goto update;
+	else if (old_t.tm_min > new_t.tm_min)
+		return 1;
 
 	if (old_t.tm_sec < new_t.tm_sec)
 		goto update;
+	else if (old_t.tm_sec > new_t.tm_sec)
+		return 1;
 
-	return -1;
+	return 0;
 
 update:
 #if 0
@@ -145,7 +157,7 @@ update:
 #endif
 	memcpy(old, _new, sizeof(struct user_info));
 
-	return 0;
+	return -1;
 }
 
 

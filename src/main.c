@@ -59,7 +59,7 @@ int main(int argc, char **argv)
 	}
 #endif
 
-#if 1
+#if 0
 	dirp = opendir(argv[3]);
 
 	if (dirp) {

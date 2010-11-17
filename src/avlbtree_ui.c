@@ -69,6 +69,8 @@ static int btree_ui_addfile(struct btree_info *bi, const char *filename, int *ad
 			}
 			fclose(fp);
 
+			if (btree_isbalance(bi->tree) != 0)
+				printf("isbalance\n");
 			return 0;
 		}
 	}
@@ -86,7 +88,7 @@ static void btree_ui_out(struct btree_info *ui, const char *filename)
 		if (out == NULL)
 			out = stdout;
 	}
-#if 0
+#if 1
 	btree_print(ui->tree, (void (*)(void*, void*))userinfo_print, out);
 #else
 	{
