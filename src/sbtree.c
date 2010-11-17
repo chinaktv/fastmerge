@@ -217,7 +217,6 @@ static int bintree_isbalance(struct btree *tree, struct btree_node *node)
 	else
 		ret = bintree_isbalance(tree, node->left) && bintree_isbalance(tree, node->right);
 
-	printf("dis=%d, ret=%d\n", dis, ret);
 	return ret;
 }
 

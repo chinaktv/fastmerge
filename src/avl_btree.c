@@ -522,6 +522,23 @@ static int bintree_fixAfterInsertion(struct btree *tree, struct btree_node *ance
 
 static void avlbtree_insert(struct btree * tree, void *data, const char *key, int *add, int *update)
 {
+/*
+ *  000000000000000020,writer,female,writer@yahoo.com,130583970678,2010-11-05 03:37:03
+ *  000000000000000050,smoker,female,smoker@sina.com,134846766876,2010-11-04 12:03:08
+ *  000000000000000060,smoker,female,smoker@sina.com,134846766876,2010-11-04 12:03:08
+ *  000000000000000030,brotherly,female,brotherly@tom.com,13227343096,2010-11-05 23:20:37
+ *  000000000000000040,postcard,male,postcard@163.com,135234026304,2010-11-08 00:26:12
+ *  000000000000000010,harvest,female,harvest@qq.com,13308214800,2010-11-08 17:10:45
+
+ *      50(L)                 50(L)                50(L)                30(=)
+ *     /    \                /    \               /    \               /     \
+ *   20(R)   60(=)   =>     30(=)  60(=)  =>     30(=)  60(=)  =>    20(L)   50(=)
+ *      \                   /   \               /    \               /      /    \
+ *       30(=)            20(=) 40(=)         20(=)  40(=)         10(=)   40(=) 60(=)
+ *          \                                  /
+ *          40(=)                            10(=)
+ *  
+ */
 	struct btree_node *thiz = tree->root, *ancestor = NULL; 
 
 	if (thiz == NULL) {
@@ -679,7 +696,6 @@ static int bintree_isbalance(struct btree *tree, struct btree_node *node)
 		ret = 1;
 	else
 		ret = bintree_isbalance(tree, node->left) && bintree_isbalance(tree, node->right);
-	printf("dis=%d, ret=%d\n", dis, ret);
 
 	return ret;
 }
