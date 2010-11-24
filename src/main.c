@@ -62,6 +62,7 @@ int main(int argc, char **argv)
 #if 1
 	dirp = opendir(argv[3]);
 
+	ui_set(userinfo, 1, 0);
 	if (dirp) {
 		char filename[256];
 

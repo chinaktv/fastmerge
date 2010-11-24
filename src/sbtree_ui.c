@@ -23,16 +23,15 @@ static struct btree_info *btree_ui_create(void)
 	bi = (struct btree_info*)malloc(sizeof(struct btree_info));
 	assert(bi);
 
-	bi->userinfo_store = store_open_memory(sizeof(struct user_info), 1024);
-//	bi->userinfo_store = store_open_disk("/tmp/temp", sizeof(struct user_info), 1024);
+	bi->userinfo_store = store_open_memory(sizeof(struct user_info), 102400);
+//	bi->userinfo_store = store_open_disk("/tmp/temp", sizeof(struct user_info), 102400);
 
-	bi->tree = sbtree_new_memory(bi->userinfo_store, (int(*)(const void *, const void *))userinfo_compare, 
-			(int (*)(void*, void*))userinfo_update);
+	bi->tree = sbtree_new_memory(bi->userinfo_store);
 
 	return bi;
 }
 
-static int userinfo_insert(struct btree *tree, char *info_str, int *add, int *update)
+static int userinfo_insert(struct btree *tree, char *info_str, size_t seek, int *add, int *update)
 {
 	struct user_info new_data;
 	char key[20] = {0, }, *p;
@@ -50,9 +49,9 @@ static int userinfo_insert(struct btree *tree, char *info_str, int *add, int *up
 	memcpy(key, info_str, p - info_str);
 
 	memset(&new_data, 0, sizeof(struct user_info));
-	userinfo_parser(&new_data, info_str);
+	userinfo_parser(&new_data, info_str, seek);
 
-	btree_insert(tree, &new_data, new_data.str, add, update);
+	btree_insert(tree, &new_data, new_data.key, &new_data.update, add, update);
 
 	return 0;
 }
@@ -63,9 +62,12 @@ static int btree_ui_addfile(struct btree_info *bi, const char *filename, int *ad
 		FILE *fp;
 		char str[512];
 		if ((fp  = fopen(filename, "r")) != NULL) {
+			size_t seek;
+
 			while (!feof(fp)) {
+				seek = ftell(fp);
 				if (fgets(str, 512, fp))
-					userinfo_insert(bi->tree, str, add, update);
+					userinfo_insert(bi->tree, str, seek, add, update);
 			}
 			fclose(fp);
 

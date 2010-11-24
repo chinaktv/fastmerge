@@ -23,10 +23,11 @@ typedef struct algorithm {
 	void *_private;
 	void* (*init)(void);
 	int   (*addfile)(void *info, const char *filename, int *add, int *update);
-	void  (*out)(void *info, const char *file);
-	void  (*end)(void *info);
+	void  (*out) (void *info, const char *file);
+	void  (*end) (void *info);
 	void  (*free)(void *info);
 	int   (*find)(void *info, const char *key);
+	void  (*set) (void *info, int key, int value);
 } ui;
 
 int  ui_init   (ui *info);
@@ -35,6 +36,7 @@ int  ui_addfile(ui *info, const char *filename, int *add, int *update);
 void ui_out    (ui *info, const char *filename);
 int  ui_find   (ui *info, const char *key);
 void ui_end    (ui *info);
+void ui_set    (ui *info, int key, int value);
 
 extern ui sbtree_ui;
 extern ui avlbtree_ui;

@@ -68901,16 +68901,17 @@ int main(int argc, char **argv)
 	initstate(time(NULL), randstate, 256);
 	setstate(randstate);
 
-#if 1
-	for (i=0; i < 1000000; i++) {
+#if 0
+	for (i=0; i < 10000000; i++) {
 		get_user_info(info);
 		printf("%s\n", info);
 	}
 #endif
-#if 0
-	for (i=0; i < 10000; i++) {
+#if 1
+	for (i=0; i < 2; i++) {
 		sprintf(filename, "./new_info/%d.csv", i+1);
-		count = random() % 1000 + 1;
+//		count = random() % 1000 + 1;
+		count = 100000;		
 		create_info_file(filename, count);
 	}
 #endif

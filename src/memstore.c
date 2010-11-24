@@ -8,38 +8,38 @@
 struct memStore {
 	void **store;
 	size_t blockSize;
-	off_t  blockCount;
-	off_t  newLastBlock;
+	size_t  blockCount;
+	size_t  newLastBlock;
 	int    calledFree;
 	long   total;
 };
 
-static struct memStore *ms_open(size_t blockSize, off_t blockCount);
+static struct memStore *ms_open(size_t blockSize, size_t blockCount);
 static void   ms_close       (struct memStore * ms);
-static void  *ms_readBlock   (struct memStore * ms, off_t blockNumber);
-static void   ms_writeBlock  (struct memStore * ms, off_t blockNumber, void *block);
-static off_t  ms_newBlock    (struct memStore * ms);
-static void   ms_releaseBlock(struct memStore * ms, off_t blockNumber, void *block);
-static void   ms_freeBlock   (struct memStore * ms, off_t blockNumber);
+static void  *ms_readBlock   (struct memStore * ms, size_t blockNumber);
+static void   ms_writeBlock  (struct memStore * ms, size_t blockNumber, void *block);
+static size_t  ms_newBlock    (struct memStore * ms);
+static void   ms_releaseBlock(struct memStore * ms, size_t blockNumber, void *block);
+static void   ms_freeBlock   (struct memStore * ms, size_t blockNumber);
 static size_t ms_blockSize   (struct memStore * ms);
 
-off_t ms_blockCount(struct memStore * ms);
+size_t ms_blockCount(struct memStore * ms);
 void ms_print(struct memStore * ms);
 
 const struct store_functions memory_functions = {
 	.close     = (void   (*)(void *))               ms_close,
-	.read      = (void * (*)(void *, off_t))        ms_readBlock,
-	.write     = (void   (*)(void *, off_t, void*)) ms_writeBlock,
-	.new_store = (off_t  (*)(void *       ))        ms_newBlock,
-	.release   = (void   (*)(void *, off_t, void*)) ms_releaseBlock,
-	.free      = (void   (*)(void *, off_t))        ms_freeBlock,
+	.read      = (void * (*)(void *, size_t))        ms_readBlock,
+	.write     = (void   (*)(void *, size_t, void*)) ms_writeBlock,
+	.new_store = (size_t  (*)(void *       ))        ms_newBlock,
+	.release   = (void   (*)(void *, size_t, void*)) ms_releaseBlock,
+	.free      = (void   (*)(void *, size_t))        ms_freeBlock,
 	.blockSize = (size_t (*)(void *))               ms_blockSize
 };
 
-static void   ms_grow_store     (struct memStore * ms, off_t newSize);
-static off_t  ms_find_free_block(struct memStore * ms, off_t startBlock, off_t Stopblock);
+static void   ms_grow_store     (struct memStore * ms, size_t newSize);
+static size_t  ms_find_free_block(struct memStore * ms, size_t startBlock, size_t Stopblock);
 
-struct store * store_open_memory(size_t blockSize, off_t blockCount) 
+struct store * store_open_memory(size_t blockSize, size_t blockCount) 
 {
 	struct store * store = malloc(sizeof(struct store));
 	
@@ -51,7 +51,7 @@ struct store * store_open_memory(size_t blockSize, off_t blockCount)
 	return store;
 }
 
-static struct memStore * ms_open(size_t blockSize, off_t blockCount) 
+static struct memStore * ms_open(size_t blockSize, size_t blockCount) 
 {
 	struct memStore * ms = (struct memStore *) malloc(sizeof(struct memStore));
 
@@ -72,7 +72,7 @@ static struct memStore * ms_open(size_t blockSize, off_t blockCount)
 
 static void ms_close(struct memStore * ms) 
 {
-	off_t i;
+	size_t i;
 	int free_count = 0;
 
 	for(i = 0; i < ms->blockCount; i++) {
@@ -85,28 +85,28 @@ static void ms_close(struct memStore * ms)
 	free(ms);
 }
 
-static void *ms_readBlock(struct memStore * ms, off_t blockNumber) 
+static void *ms_readBlock(struct memStore * ms, size_t blockNumber) 
 {
 	ms->total++;
 	assert ((blockNumber >= 0) && (blockNumber < ms->blockCount));
 	return ms->store[blockNumber];
 }
 
-static void ms_releaseBlock(struct memStore * ms, off_t blockNumber, void *block) 
+static void ms_releaseBlock(struct memStore * ms, size_t blockNumber, void *block) 
 {
 	/* This function intentionally left blank. */
 }
 
-static void ms_writeBlock(struct memStore * ms, off_t blockNumber, void *block) 
+static void ms_writeBlock(struct memStore * ms, size_t blockNumber, void *block) 
 {
 	/* This function intentionally left blank. */
 }
 
-static off_t ms_newBlock(struct memStore * ms) 
+static size_t ms_newBlock(struct memStore * ms) 
 {
-	off_t newBlock = -1;
-	off_t current_block = ms->newLastBlock;
-	off_t initial_block = ms->newLastBlock;
+	size_t newBlock = -1;
+	size_t current_block = ms->newLastBlock;
+	size_t initial_block = ms->newLastBlock;
 
 	newBlock = ms_find_free_block(ms, current_block, ms->blockCount);
 
@@ -143,7 +143,7 @@ static off_t ms_newBlock(struct memStore * ms)
 	return newBlock;
 }
 
-void ms_freeBlock(struct memStore * ms, off_t blockNumber) 
+void ms_freeBlock(struct memStore * ms, size_t blockNumber) 
 {
 	void * block = ms_readBlock(ms, blockNumber);
 	assert(block != 0);
@@ -154,9 +154,9 @@ void ms_freeBlock(struct memStore * ms, off_t blockNumber)
 	free(block);
 }
 
-static off_t ms_find_free_block(struct memStore * ms, off_t startBlock, off_t stopBlock) 
+static size_t ms_find_free_block(struct memStore * ms, size_t startBlock, size_t stopBlock) 
 {
-	off_t i;
+	size_t i;
 
 	for(i = startBlock; i < stopBlock; i++) {
 		if(ms->store[i] == 0) {
@@ -166,7 +166,7 @@ static off_t ms_find_free_block(struct memStore * ms, off_t startBlock, off_t st
 	return -1;
 }
 
-static void ms_grow_store(struct memStore * ms, off_t newCount) 
+static void ms_grow_store(struct memStore * ms, size_t newCount) 
 {
 	void * oldStore = ms->store;
 
@@ -185,7 +185,7 @@ static size_t ms_blockSize(struct memStore * ms)
 	return ms->blockSize;
 }
 
-off_t ms_blockCount(struct memStore * ms) 
+size_t ms_blockCount(struct memStore * ms) 
 {
 	return ms->blockCount;
 }

@@ -8,15 +8,16 @@
 #include "store.h"
 #include "info.h"
 
-#define REC_DEPTH 0
+#define REC_DEPTH 1
 
 static void avlbtree_print    (struct btree *tree, struct btree_node *node, void (*print)(void *, void*), void *userdata);
-static void avlbtree_insert   (struct btree *tree, void *data, const char *key, int *add, int *update);
+static void avlbtree_insert   (struct btree *tree, void *data, const char *key, struct dt *time, int *add, int *update);
 static void avlbtree_close    (struct btree *tree);
 static int  avlbtree_find     (struct btree *tree, const char *key);
 static int  avlbtree_isbalance(struct btree *tree);
+static void avlbtree_set      (struct btree *tree, int key, int value);
 
-struct btree *avlbtree_new_memory(struct store *store, int (*compare)(const void*, const void*), int (*insert_eq)(void*, void*))
+struct btree *avlbtree_new_memory(struct store *store)
 {
 	struct btree * tree;
 
@@ -26,10 +27,16 @@ struct btree *avlbtree_new_memory(struct store *store, int (*compare)(const void
 	memset(tree, 0, sizeof(struct btree));
 
 	tree->store       = store;
-	tree->compare     = compare;
-	tree->insert_eq   = insert_eq;
 	tree->root        = NULL;
 	tree->entries_num = 0;
+	tree->avl         = 1;
+
+	tree->close       = avlbtree_close;
+	tree->insert      = avlbtree_insert;
+	tree->show        = avlbtree_print;
+	tree->find        = avlbtree_find;
+	tree->set         = avlbtree_set;
+	tree->isbalance   = avlbtree_isbalance;
 
 	INIT_LIST_HEAD(&tree->node_head);
 	tree->node_pool = (struct btree_node_head *)calloc(1, sizeof(struct btree_node_head));
@@ -37,16 +44,19 @@ struct btree *avlbtree_new_memory(struct store *store, int (*compare)(const void
 	tree->node_pool->used_id = 0;
 	list_add(&tree->node_pool->head, &tree->node_head);
 
-	tree->close     = avlbtree_close;
-	tree->insert    = avlbtree_insert;
-	tree->show      = avlbtree_print;
-	tree->find      = avlbtree_find;
-	tree->isbalance = avlbtree_isbalance;
-
 	return tree;
 }
 
-static struct btree_node *node_new(struct btree *tree, void *data, const char *key)
+static void avlbtree_set(struct btree *tree, int key, int value)
+{
+	switch (key){
+		case 1:
+			tree->avl = value;
+			break;
+	}
+}
+
+static struct btree_node *node_new(struct btree *tree, void *data, const char *key, struct dt *time)
 {
 	struct btree_node * p_node;
 
@@ -60,6 +70,8 @@ static struct btree_node *node_new(struct btree *tree, void *data, const char *k
 
 	p_node->left = p_node->right = p_node->parent = NULL;
 	p_node->data = store_new_write(tree->store, data);
+	p_node->date = time->date;
+	p_node->time = time->time;
 	p_node->balance = '=';
 
 	if (key)
@@ -520,7 +532,7 @@ static int bintree_fixAfterInsertion(struct btree *tree, struct btree_node *ance
 	return 0;
 }
 
-static void avlbtree_insert(struct btree * tree, void *data, const char *key, int *add, int *update)
+static void avlbtree_insert(struct btree * tree, void *data, const char *key, struct dt *time, int *add, int *update)
 {
 /*
  *  000000000000000020,writer,female,writer@yahoo.com,130583970678,2010-11-05 03:37:03
@@ -542,7 +554,7 @@ static void avlbtree_insert(struct btree * tree, void *data, const char *key, in
 	struct btree_node *thiz = tree->root, *ancestor = NULL; 
 
 	if (thiz == NULL) {
-		tree->root = node_new(tree, data, key);
+		tree->root = node_new(tree, data, key, time);
 		tree->entries_num++;
 
 		return;
@@ -552,30 +564,37 @@ static void avlbtree_insert(struct btree * tree, void *data, const char *key, in
 		int cmp = strcmp(key, thiz->key);
 
 		if (cmp == 0) {
-			if (tree->insert_eq) {
+			if (thiz->date < time->date || (thiz->date == time->date && thiz->time < time->time)) {
 				void * pptr_data_ptr = store_read(tree->store, thiz->data);
-				if (tree->insert_eq(pptr_data_ptr, data) < 0) {
-					store_write(tree->store, thiz->data, pptr_data_ptr);
-					(*update)++;
-				}
+				memcpy(pptr_data_ptr, data, store_blockSize(tree->store));
+				store_write(tree->store, thiz->data, pptr_data_ptr);
 				store_release(tree->store, thiz->data, pptr_data_ptr);
+
+				thiz->data = time->date;
+				thiz->time = time->time;
+
+				(*update)++;
 			}
 			return;
 		}
 
-		//记录不平衡的祖先节点  
-		if (thiz->balance != '=') {  
-			//如果哪个祖先节点不平衡，则记录，当循环完后，ancestor指向的就是最近一个  
-			//不平衡的祖先节点  
-			ancestor = thiz;  
-		} 
+		if (tree->avl) {
+			//记录不平衡的祖先节点  
+			if (thiz->balance != '=') {  
+				//如果哪个祖先节点不平衡，则记录，当循环完后，ancestor指向的就是最近一个  
+				//不平衡的祖先节点  
+				ancestor = thiz;  
+			} 
+		}
 		if (cmp < 0) {
 			if (thiz->left != NULL)
 				thiz = thiz->left;
 			else {
-				thiz->left = node_new(tree, data, key);
+				thiz->left = node_new(tree, data, key, time);
 				thiz->left->parent = thiz;
-				bintree_fixAfterInsertion(tree, ancestor, thiz->left);
+				if (tree->avl)
+					bintree_fixAfterInsertion(tree, ancestor, thiz->left);
+
 				(*add)++;
 
 				break;
@@ -585,9 +604,11 @@ static void avlbtree_insert(struct btree * tree, void *data, const char *key, in
 			if (thiz->right != NULL)
 				thiz = thiz->right;
 			else {
-				thiz->right = node_new(tree, data, key);
+				thiz->right = node_new(tree, data, key, time);
 				thiz->right->parent = thiz;
-				bintree_fixAfterInsertion(tree, ancestor, thiz->right);
+				if (tree->avl)
+					bintree_fixAfterInsertion(tree, ancestor, thiz->right);
+				
 				(*add)++;
 
 				break;

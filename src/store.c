@@ -24,9 +24,9 @@ void store_close(struct store *stor)
 	free(stor);
 }
 
-off_t store_new_write(struct store *stor, void *data)
+size_t store_new_write(struct store *stor, void *data)
 {
-	off_t idx = store_new(stor);                     
+	size_t idx = store_new(stor);                     
 	void *data_ptr = store_read(stor, idx);              
 	memcpy(data_ptr, data, store_blockSize(stor)); 
 	store_write(stor, idx, data_ptr);              

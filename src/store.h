@@ -18,11 +18,11 @@ struct store {
 
 struct store_functions {
 	void   (*close)(void*);
-	void * (*read)(void*, off_t);
-	void   (*write)(void*, off_t, void*);
-	off_t  (*new_store)(void*);
-	void   (*release)(void*, off_t, void*);
-	void   (*free)(void*, off_t);
+	void * (*read)(void*, size_t);
+	void   (*write)(void*, size_t, void*);
+	size_t  (*new_store)(void*);
+	void   (*release)(void*, size_t, void*);
+	void   (*free)(void*, size_t);
 	size_t (*blockSize)(void*);
 };
 
@@ -34,10 +34,10 @@ struct store_functions {
 #define store_blockSize(stor)             (*(stor->functions->blockSize))((stor)->store_p)
 
 void  store_close    (struct store *stor);
-off_t store_new_write(struct store *stor, void *data);
+size_t store_new_write(struct store *stor, void *data);
 
-struct store *store_open_memory(size_t blockSize, off_t blockCount);
-struct store *store_open_disk(const char *filename, size_t blockSize, off_t blockCount);
+struct store *store_open_memory(size_t blockSize, size_t blockCount);
+struct store *store_open_disk(const char *filename, size_t blockSize, size_t blockCount);
 
 #endif
 

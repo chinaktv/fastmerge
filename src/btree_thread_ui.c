@@ -12,6 +12,7 @@
 #include "store.h"
 #include "ui.h"
 #include "info.h"
+#include "index.h"
 
 #define MAX_THREAD 4
 #define MAX_STR 128
@@ -20,6 +21,7 @@
 struct bthread_info;
 
 struct info_node {
+	size_t seek;
 	char str[MAX_STR];
 };
 
@@ -49,6 +51,7 @@ struct mqueue *mq_create(int size, int full)
 		for (i = 0; i < size; i++) {
 			mq->node[i] = (struct info_node *)malloc(sizeof(struct info_node));
 			assert(mq->node[i]);
+			memset(mq->node[i], 0, sizeof(struct info_node));
 		}
 		mq->rear = size - 1;
 		sem_init(&mq->get_sem, 0, size - 1);
@@ -112,8 +115,10 @@ struct bthread_node {
 	int id;
 	int count;
 	struct mqueue *info_queue;
+	struct info_node node_buffer;
 	struct bthread_info *bi;
 	int add, update;
+	char tmpfile[128];
 
 	struct btree *tree;
 	struct store *store;
@@ -130,7 +135,7 @@ struct bthread_info {
 	struct mqueue *free_queue;
 };
 
-static int userinfo_insert(struct btree *tree, char *info_str, int *add, int *update)
+static int userinfo_insert(struct btree *tree, char *info_str, size_t seek, int *add, int *update)
 {
 	struct user_info new_data;
 	char key[20] = {0, }, *p;
@@ -148,9 +153,9 @@ static int userinfo_insert(struct btree *tree, char *info_str, int *add, int *up
 	memcpy(key, info_str, p - info_str);
 
 	memset(&new_data, 0, sizeof(struct user_info));
-	userinfo_parser(&new_data, info_str);
+	userinfo_parser(&new_data, info_str, seek);
 
-	btree_insert(tree, &new_data, key, add, update);
+	btree_insert(tree, &new_data, key, &new_data.update, add, update);
 
 	return 0;
 }
@@ -166,7 +171,7 @@ void *insert_thread(struct bthread_node *thread_node)
 
 		if (str_node) {
 			thread_node->count++;
-			userinfo_insert(thread_node->tree, str_node->str, &thread_node->add, &thread_node->update);
+			userinfo_insert(thread_node->tree, str_node->str, str_node->seek, &thread_node->add, &thread_node->update);
 			mq_append(thread_node->bi->free_queue, str_node, 1);
 		}
 		else  {
@@ -188,6 +193,7 @@ static struct bthread_info *btree_thread_ui_create(void)
 	assert(bi);
 
 	bi->free_queue = mq_create(MAX_BUF, 1);
+	index_init();
 
 	for (i = 0; i < MAX_THREAD; i++) {
 		bi->node[i].id    = i;
@@ -195,9 +201,12 @@ static struct bthread_info *btree_thread_ui_create(void)
 		bi->node[i].eof   = 0;
 		bi->node[i].bi    = bi; 
 		bi->node[i].info_queue = mq_create(MAX_BUF, 0);
-		bi->node[i].store = store_open_memory(sizeof(struct user_info), 102400);
-		bi->node[i].tree  = sbtree_new_memory(bi->node[i].store, \
-						(int(*)(const void *, const void *))userinfo_compare, (int (*)(void*, void*))userinfo_update);
+		strcpy(bi->node[i].tmpfile, "/tmp/mem_XXXXXX");		
+		mkstemp(bi->node[i].tmpfile);
+		bi->node[i].store = store_open_disk(bi->node[i].tmpfile, sizeof(struct user_info), 102400);
+//		bi->node[i].store = store_open_memory(sizeof(struct user_info), 102400);
+//		bi->node[i].tree  = avlbtree_new_memory(bi->node[i].store);
+		bi->node[i].tree  = sbtree_new_memory(bi->node[i].store);
 
 		pthread_mutex_init(&bi->node[i].mutex, NULL);
 
@@ -210,12 +219,41 @@ static struct bthread_info *btree_thread_ui_create(void)
 int btree_thread_ui_addfile_fopen(struct bthread_info *bi, const char *filename, int *add, int *update)
 {
 	if (filename && bi) {
-		FILE *fp;
+		size_t seek;
+		index_add_file(filename);
 
+		while (1) {
+			struct info_node *node = mq_get(bi->free_queue, 0);
+
+			seek = index_read_line(node->str, sizeof(node->str) - 1);
+
+			printf("[%u], %s\n", seek, node->str);
+
+			if (seek >= 0) {
+				int mon;
+
+				if (strlen(node->str) < 8) {
+					mq_append(bi->free_queue, node, 1);
+					continue;
+				}
+				mon = FAST_HASH(node->str) % MAX_THREAD;
+
+				mq_append(bi->node[mon].info_queue, node, 1);
+			}
+			else {
+				mq_append(bi->free_queue, node, 1);
+				break;
+			}
+		}
+				
+
+
+#if 0
 		if ((fp  = fopen(filename, "r")) != NULL) {
 			while (!feof(fp)) {
 				struct info_node *node = mq_get(bi->free_queue, 0);
 
+				node->seek = ftell(fp);
 				if (fgets(node->str, sizeof(node->str) - 1, fp)) {
 					int mon;
 
@@ -225,6 +263,7 @@ int btree_thread_ui_addfile_fopen(struct bthread_info *bi, const char *filename,
 					}
 
 					mon = FAST_HASH(node->str) % MAX_THREAD;
+
 					mq_append(bi->node[mon].info_queue, node, 1);
 				}
 				else 
@@ -234,6 +273,7 @@ int btree_thread_ui_addfile_fopen(struct bthread_info *bi, const char *filename,
 
 			return 0;
 		}
+#endif
 	}
 
 	return -1;

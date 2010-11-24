@@ -11,12 +11,12 @@
 #define REC_DEPTH 0
 
 static void sbtree_print    (struct btree * tree, struct btree_node *node, void (*print)(void *, void*), void *userdata);
-static void sbtree_insert   (struct btree * tree, void *data, const char *key, int *add, int *update);
+static void sbtree_insert   (struct btree * tree, void *data, const char *key, struct dt *time, int *add, int *update);
 static void sbtree_close    (struct btree * tree);
 static int  sbtree_find     (struct btree *tree, const char *key);
 static int  sbtree_isbalance(struct btree *tree);
 
-struct btree *sbtree_new_memory(struct store *store, int (*compare)(const void*, const void*), int (*insert_eq)(void*, void*))
+struct btree *sbtree_new_memory(struct store *store)
 {
 	struct btree * tree;
 
@@ -26,8 +26,6 @@ struct btree *sbtree_new_memory(struct store *store, int (*compare)(const void*,
 	memset(tree, 0, sizeof(struct btree));
 
 	tree->store       = store;
-	tree->compare     = compare;
-	tree->insert_eq   = insert_eq;
 	tree->root        = NULL;
 	tree->entries_num = 0;
 
@@ -46,7 +44,7 @@ struct btree *sbtree_new_memory(struct store *store, int (*compare)(const void*,
 	return tree;
 }
 
-static struct btree_node *node_new(struct btree *tree, void *data, const char *key)
+static struct btree_node *node_new(struct btree *tree, void *data, const char *key, struct dt *time)
 {
 	struct btree_node *p_node;
 
@@ -60,21 +58,23 @@ static struct btree_node *node_new(struct btree *tree, void *data, const char *k
 
 	p_node->left = p_node->right = p_node->parent = NULL;
 	p_node->data = store_new_write(tree->store, data);
+	p_node->date = time->date;
+	p_node->time = time->time;
 
 	if (key)
-		strncpy(p_node->key, key, 20);
+		strncpy(p_node->key, key, KEY_LEN);
 	else
 		p_node->key[0] = '\0';
 
 	return p_node;
 }
 
-static void sbtree_insert(struct btree * tree, void *data, const char *key, int *add, int *update)
+static void sbtree_insert(struct btree * tree, void *data, const char *key, struct dt *time, int *add, int *update)
 {
 	struct btree_node *thiz = tree->root;
 
 	if (thiz == NULL) {
-		tree->root = node_new(tree, data, key);
+		tree->root = node_new(tree, data, key, time);
 
 		return;
 	}
@@ -83,13 +83,16 @@ static void sbtree_insert(struct btree * tree, void *data, const char *key, int 
 		int cmp = strncmp(key, thiz->key, KEY_LEN);
 
 		if (cmp == 0) {
-			if (tree->insert_eq) {
+			if (thiz->date < time->date || (thiz->date == time->date && thiz->time < time->time)) {
 				void * pptr_data_ptr = store_read(tree->store, thiz->data);
-				if (tree->insert_eq(pptr_data_ptr, data) < 0) {
-					store_write(tree->store, thiz->data, pptr_data_ptr);
-					(*update)++;
-				}
+				memcpy(pptr_data_ptr, data, store_blockSize(tree->store));
+				store_write(tree->store, thiz->data, pptr_data_ptr);
 				store_release(tree->store, thiz->data, pptr_data_ptr);
+
+				thiz->data = time->date;
+				thiz->time = time->time;
+
+				(*update)++;
 			}
 			return;
 		}
@@ -97,7 +100,7 @@ static void sbtree_insert(struct btree * tree, void *data, const char *key, int 
 			if (thiz->left != NULL)
 				thiz = thiz->left;
 			else {
-				thiz->left = node_new(tree, data, key);
+				thiz->left = node_new(tree, data, key, time);
 				(*add)++;
 
 				break;
@@ -107,7 +110,7 @@ static void sbtree_insert(struct btree * tree, void *data, const char *key, int 
 			if (thiz->right != NULL)
 				thiz = thiz->right;
 			else {
-				thiz->right = node_new(tree, data, key);
+				thiz->right = node_new(tree, data, key, time);
 				(*add)++;
 
 				break;
@@ -165,7 +168,6 @@ int sbtree_find(struct btree *tree, const char *key)
 static void sbtree_close(struct btree * tree)
 {
 	struct list_head *pos, *n, *head;
-
 
 	head = & tree->node_head;
 	list_for_each_safe(pos, n, head) {

@@ -9,35 +9,40 @@
 #include "info.h"
 
 #define KEY (key[x++] - '0')
-static inline void str2time(struct tm *t, const char *key)
+static inline void str2time(struct dt *t, const char *key)
 {
 	int x = 0;
 
-	t->tm_year  = KEY * 1000;
-	t->tm_year += KEY * 100;
-	t->tm_year += KEY * 10;
-	t->tm_year += KEY * 1;
-	t->tm_year -= 1900;
+	int year, mon, mday, hour, min, sec;
+
+	year  = KEY * 1000;
+	year += KEY * 100;
+	year += KEY * 10;
+	year += KEY * 1;
+	year -= 1900;
 
 	x++;
-	t->tm_mon  = KEY * 10;
-	t->tm_mon += KEY * 1;
+	mon  = KEY * 10;
+	mon += KEY * 1;
 	
 	x++;
-	t->tm_mday  = KEY * 10;
-	t->tm_mday += KEY * 1;
+	mday  = KEY * 10;
+	mday += KEY * 1;
 	
 	x++;
-	t->tm_hour  = KEY * 10;
-	t->tm_hour += KEY * 1;
+	hour  = KEY * 10;
+	hour += KEY * 1;
 	
 	x++;
-	t->tm_min   = KEY * 10;
-	t->tm_min  += KEY * 1;
+	min   = KEY * 10;
+	min  += KEY * 1;
 	
 	x++;
-	t->tm_sec   = KEY * 10;
-	t->tm_sec  += KEY * 1;
+	sec   = KEY * 10;
+	sec  += KEY * 1;
+
+	t->date = (year << 16) + (mon << 8) + mday;
+	t->time = (hour << 16) + (min << 8) + sec;
 }
 
 static inline int str2userid(user_id *userid, const char *key)
@@ -84,9 +89,8 @@ static inline int str2userid(user_id *userid, const char *key)
 
 int userinfo_compare(const struct user_info *a, const struct user_info *b) 
 {
-#if PARSE_INFO
 #if STR_KEY
-	return strncmp(a->card, b->card, 17);
+	return strncmp(a->key, b->key, 17);
 #else
 	int i = 0, x;
 
@@ -98,98 +102,45 @@ int userinfo_compare(const struct user_info *a, const struct user_info *b)
 
 	return EQ;
 #endif
-#endif
 	return 0;
 }
 
-int userinfo_update(struct user_info *old, struct user_info *_new)
+int tm_compare(struct dt *t1, struct dt *t2)
 {
-	struct tm old_t, new_t;
-#if PARSE_INFO
-	old_t = old->update;
-	new_t = _new->update;
-#else
-	char *ap = strrchr(old->str, ',') + 1;
-	char *bp = strrchr(_new->str, ',') + 1;
-
-	str2time(&old_t, ap);
-	str2time(&new_t, bp);
-#endif
-	if (old_t.tm_year < new_t.tm_year)
-		goto update;
-	else if (old_t.tm_year > new_t.tm_year)
-		return 1;
-
-	if (old_t.tm_mon < new_t.tm_mon)
-		goto update;
-	else if (old_t.tm_mon > new_t.tm_mon)
-		return 1;
-
-	if (old_t.tm_mday < new_t.tm_mday) 
-		goto update;
-	else if (old_t.tm_mday > new_t.tm_mday)
-		return 1;
-
-	if (old_t.tm_hour < new_t.tm_hour)
-		goto update;
-	else if (old_t.tm_hour > new_t.tm_hour)
-		return 1;
-
-	if (old_t.tm_min < new_t.tm_min)
-		goto update;
-	else if (old_t.tm_min > new_t.tm_min)
-		return 1;
-
-	if (old_t.tm_sec < new_t.tm_sec)
-		goto update;
-	else if (old_t.tm_sec > new_t.tm_sec)
-		return 1;
-
-	return 0;
-
-update:
-#if 0
-#if PARSE_INFO
-	printf("%s(%s) -> %s(%s)\n", _new->card, _new->name, old->card, old->name);
-#else	
-	printf("%s -> %s\n", _new->str, old->str);
-#endif
-#endif
-	memcpy(old, _new, sizeof(struct user_info));
-
-	return -1;
+	if (t1->date == t2->date)
+		return t1->time - t2->time;
+	else
+		return t1->date - t2->time;
 }
 
-
-
-int userinfo_parser(struct user_info *info, char *info_str)
+int userinfo_parser(struct user_info *info, char *info_str, size_t seek)
 {
-#if PARSE_INFO
 	char *p, *key =  info_str;
 	int i = 0;
 
+	info->seek = seek;
 	while (key) {
 		if ((p = strchr(key, ',')))
 			*p = 0;
 		switch (i) {
 			case 0:
 #if STR_KEY
-				strncpy(info->card, key, sizeof(info->card));
+				strncpy(info->key, key, sizeof(info->key));
 #else
 				str2userid(&info->userid, key);
 #endif
 				break;
 			case 1:
-				strncpy(info->name, key, sizeof(info->name));
+//				strncpy(info->name, key, sizeof(info->name));
 				break;
 			case 2:
-				info->sex = key[0];
+//				info->sex = key[0];
 				break;
 			case 3:
-				strncpy(info->email, key, sizeof(info->email));
+//				strncpy(info->email, key, sizeof(info->email));
 				break;
 			case 4:
-				strncpy(info->mobile, key, sizeof(info->mobile));
+//				strncpy(info->mobile, key, sizeof(info->mobile));
 				break;
 		
 			case 5: 
@@ -219,22 +170,36 @@ int userinfo_parser(struct user_info *info, char *info_str)
 			info->userid.zipcode, info->userid.y, info->userid.m, info->userid.d, info->userid.order, info->userid.check,
 			info->name, info->email, info->mobile, asctime(&info->update));
 #endif
-#else
-	strcpy(info->str, info_str);	
-#endif
 	return 0;
 }
 
 void userinfo_print(FILE *fp, struct user_info *i)
 {
-#if PARSE_INFO
 #if STR_KEY
+	char buf[128];
+
+	char *p = index_read_line_pos(i->seek, buf, 128 -1);
+	if (p)
+		fprintf(fp, "%s", p);
+#if 0	
+	fprintf(fp, "%s,"
+			"%d-%02d-%0d %02d:%02d:%02d\n",
+			i->key,
+			(i->update.date >> 16) + 1900, 
+			(i->update.date >>  8) & 0xFF,
+			(i->update.date & 0x00FF) ,
+			(i->update.time >> 16),
+			(i->update.time >>  8) & 0xFF, 
+			(i->update.time & 0x00FF));
+#endif
+#if 0
 	fprintf(fp, "%s,"
 			"%s,%s,%s,%s,"
 			"%d-%0d-%0d %02d:%02d:%02d\n",
-			i->card,
+			i->key,
 			i->name, i->sex == 'f' ? "female" : "male", i->email, i->mobile,
 			i->update.tm_year + 1900, i->update.tm_mon, i->update.tm_mday, i->update.tm_hour, i->update.tm_min, i->update.tm_sec);
+#endif
 #else
 	fprintf(fp, "%d%d%02d%02d%03d%c,"
 			"%s,%s,%s,%s,"
@@ -242,9 +207,6 @@ void userinfo_print(FILE *fp, struct user_info *i)
 			i->userid.zipcode, i->userid.y + 1900, i->userid.m, i->userid.d, i->userid.order, i->userid.check,
 			i->name, i->sex == 'f' ? "female" : "male", i->email, i->mobile,
 			i->update.tm_year + 1900, i->update.tm_mon, i->update.tm_mday, i->update.tm_hour, i->update.tm_min, i->update.tm_sec);
-#endif
-#else
-	fprintf(fp, "%s", i->str);
 #endif
 }
 

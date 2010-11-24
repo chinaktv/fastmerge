@@ -26,30 +26,30 @@ struct fileStore {
 
 static void unpack_bits        (int *, const unsigned char);
 static unsigned char pack_bits (const int *);
-static void ds_mark_block      (struct fileStore *, off_t block, int mark);
-static void ds_grow_files      (struct fileStore * fs, off_t newSize);
-static off_t ds_find_free_block(struct fileStore * fs, off_t startBlock, off_t stopBlock);
-static struct fileStore *ds_open(const char *filename, size_t blockSize, off_t blockCount);
+static void ds_mark_block      (struct fileStore *, size_t block, int mark);
+static void ds_grow_files      (struct fileStore * fs, size_t newSize);
+static size_t ds_find_free_block(struct fileStore * fs, size_t startBlock, size_t stopBlock);
+static struct fileStore *ds_open(const char *filename, size_t blockSize, size_t blockCount);
 
 static void  ds_close       (struct fileStore * fs);
-static void *ds_readBlock   (const struct fileStore * fs, off_t blockNumber);
-static void  ds_writeBlock  (struct fileStore * fs, off_t blockNumber, void *value);
-static off_t ds_newBlock    (struct fileStore * fs);
-static void  ds_releaseBlock(const struct fileStore * fs, off_t blockNumber, void * block) ;
-static void  ds_freeBlock   (struct fileStore * fs, off_t blockNumber) ;
+static void *ds_readBlock   (const struct fileStore * fs, size_t blockNumber);
+static void  ds_writeBlock  (struct fileStore * fs, size_t blockNumber, void *value);
+static size_t ds_newBlock    (struct fileStore * fs);
+static void  ds_releaseBlock(const struct fileStore * fs, size_t blockNumber, void * block) ;
+static void  ds_freeBlock   (struct fileStore * fs, size_t blockNumber) ;
 static size_t ds_blockSize  (const struct fileStore * fs);
 
 const struct store_functions disk_functions = {
 	(void   (*)(void *))               &ds_close,
-	(void * (*)(void *, off_t))        &ds_readBlock,
-	(void   (*)(void *, off_t, void*)) &ds_writeBlock,
-	(off_t  (*)(void *       ))        &ds_newBlock,
-	(void   (*)(void *, off_t, void*)) &ds_releaseBlock,
-	(void   (*)(void *, off_t))        &ds_freeBlock,
+	(void * (*)(void *, size_t))        &ds_readBlock,
+	(void   (*)(void *, size_t, void*)) &ds_writeBlock,
+	(size_t  (*)(void *       ))        &ds_newBlock,
+	(void   (*)(void *, size_t, void*)) &ds_releaseBlock,
+	(void   (*)(void *, size_t))        &ds_freeBlock,
 	(size_t (*)(void *))               &ds_blockSize
 };
 
-struct store * store_open_disk(const char *filename, size_t blockSize, off_t blockCount) 
+struct store * store_open_disk(const char *filename, size_t blockSize, size_t blockCount) 
 {
 	struct store * store = malloc(sizeof(struct store));
 
@@ -61,7 +61,7 @@ struct store * store_open_disk(const char *filename, size_t blockSize, off_t blo
 	return store;
 }
 
-static struct fileStore *ds_open(const char *filename, size_t blockSize, off_t blockCount) 
+static struct fileStore *ds_open(const char *filename, size_t blockSize, size_t blockCount) 
 {
 	struct fileStore* fs = (struct fileStore*) malloc(sizeof(struct fileStore));
 
@@ -97,7 +97,7 @@ static void ds_close(struct fileStore * fs)
 	free(fs);
 }
 
-static void *ds_readBlock(const struct fileStore * fs, off_t blockNumber) 
+static void *ds_readBlock(const struct fileStore * fs, size_t blockNumber) 
 {
 	void * retVal;
 	LSEEK((fs->data_file, blockNumber * fs->blockSize, SEEK_SET));
@@ -112,22 +112,22 @@ static void *ds_readBlock(const struct fileStore * fs, off_t blockNumber)
 	return retVal;
 } 
 
-static void ds_releaseBlock(const struct fileStore * fs, off_t blockNumber, void * block) 
+static void ds_releaseBlock(const struct fileStore * fs, size_t blockNumber, void * block) 
 {
 	free(block);
 }
 
-static void ds_writeBlock(struct fileStore * fs, off_t blockNumber, void * value) 
+static void ds_writeBlock(struct fileStore * fs, size_t blockNumber, void * value) 
 {
 	LSEEK((fs->data_file, blockNumber * fs->blockSize, SEEK_SET));
 	WRITE((fs->data_file, value, fs->blockSize));
 }
 
-static off_t ds_newBlock(struct fileStore * fs) 
+static size_t ds_newBlock(struct fileStore * fs) 
 {
-	off_t current_block = fs->newLastBlock; 
-	off_t initial_block = fs->newLastBlock; 
-	off_t newBlock = -1;
+	size_t current_block = fs->newLastBlock; 
+	size_t initial_block = fs->newLastBlock; 
+	size_t newBlock = -1;
 
 	newBlock = ds_find_free_block(fs, current_block, fs->blockCount);
 	if(newBlock != -1) {
@@ -161,7 +161,7 @@ static off_t ds_newBlock(struct fileStore * fs)
 	return newBlock;
 } 
 
-static void ds_mark_block(struct fileStore * fs, off_t blockNumber, int used) 
+static void ds_mark_block(struct fileStore * fs, size_t blockNumber, int used) 
 {
 	unsigned char c;
 	int bitSet[8];
@@ -174,17 +174,17 @@ static void ds_mark_block(struct fileStore * fs, off_t blockNumber, int used)
 	fs->used_index[blockNumber / 8] = c;
 }
 
-static void ds_freeBlock(struct fileStore * fs, off_t blockNumber) 
+static void ds_freeBlock(struct fileStore * fs, size_t blockNumber) 
 {
 }
 
-static off_t ds_find_free_block(struct fileStore * fs, off_t startBlock, off_t stopBlock) 
+static size_t ds_find_free_block(struct fileStore * fs, size_t startBlock, size_t stopBlock) 
 {
-	off_t i;
+	size_t i;
 	int j;
 	unsigned char c;
 	int bitSet[8];
-	off_t start_offset, stop_offset;
+	size_t start_offset, stop_offset;
 
 	startBlock = (startBlock / 8) * 8;
 	stopBlock = (1+((stopBlock-1) / 8)) * 8;
@@ -213,7 +213,7 @@ static off_t ds_find_free_block(struct fileStore * fs, off_t startBlock, off_t s
 	return -1;
 }
 
-static void ds_grow_files(struct fileStore * fs, off_t newCount) 
+static void ds_grow_files(struct fileStore * fs, size_t newCount) 
 {
 	void * oldStore = fs->used_index;
 

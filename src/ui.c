@@ -59,3 +59,10 @@ void ui_end(ui *info)
 	if (info->end)
 		info->end(info->_private);
 }
+
+void ui_set(ui *info, int key, int value)
+{
+	if (info->set)
+		info->set(info->_private, key, value);
+}
+
